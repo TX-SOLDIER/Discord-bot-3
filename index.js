@@ -1405,7 +1405,7 @@ async function generateBattleImage(battle) {
     const canvas = createCanvas(W, H);
     const ctx    = canvas.getContext('2d');
 
-    // ── Background — dark gradient like GBA battle scene ──
+    // ── Background ──
     const bg = ctx.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0,   '#1a1a2e');
     bg.addColorStop(0.5, '#16213e');
@@ -1413,7 +1413,7 @@ async function generateBattleImage(battle) {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    // ── Ground lines ──
+    // ── Ground line ──
     ctx.strokeStyle = '#e94560';
     ctx.lineWidth   = 2;
     ctx.beginPath();
@@ -1424,84 +1424,76 @@ async function generateBattleImage(battle) {
     // ── Platform ovals ──
     ctx.fillStyle = 'rgba(233, 69, 96, 0.15)';
     ctx.beginPath();
-    ctx.ellipse(195, H * 0.72, 120, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(180, H * 0.72, 100, 16, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(605, H * 0.72, 120, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(620, H * 0.72, 100, 16, 0, 0, Math.PI * 2);
     ctx.fill();
 
     const p1 = battle.player1;
     const p2 = battle.player2;
 
-    // ── Load and draw sprites ──
+    // ── Enemy sprite — LEFT side ──
     try {
         if (p2.pokemon.sprite) {
             const img = await loadImage(p2.pokemon.sprite);
-            // Enemy sprite — top right, facing player (flip horizontally)
             ctx.save();
-            ctx.translate(605 + 80, 0);
+            ctx.translate(180 + 70, 0);
             ctx.scale(-1, 1);
-            ctx.drawImage(img, 0, H * 0.08, 160, 160);
+            ctx.drawImage(img, 0, H * 0.10, 140, 140);
             ctx.restore();
         }
     } catch {}
 
+    // ── Player sprite — RIGHT side ──
     try {
         if (p1.pokemon.sprite) {
             const img = await loadImage(p1.pokemon.sprite);
-            // Player sprite — bottom left, back sprite feel (larger)
-            ctx.drawImage(img, 100, H * 0.15, 180, 180);
+            ctx.drawImage(img, 460, H * 0.18, 160, 160);
         }
     } catch {}
 
     // ── Helper: draw HP bar ──
-    function drawHPBar(x, y, current, max, label, name, level, status) {
-        const barW    = 200;
-        const barH    = 12;
-        const pct     = Math.max(0, current / max);
-        const filled  = Math.floor(pct * barW);
+    function drawHPBar(x, y, current, max, name, level, status) {
+        const barW   = 180;
+        const barH   = 10;
+        const pct    = Math.max(0, current / max);
+        const filled = Math.floor(pct * barW);
 
-        // Box background
-        ctx.fillStyle   = 'rgba(0,0,0,0.55)';
+        ctx.fillStyle = 'rgba(0,0,0,0.60)';
         ctx.beginPath();
-        ctx.roundRect(x, y, 230, 80, 10);
+        ctx.roundRect(x, y, 210, 72, 8);
         ctx.fill();
 
-        // Border
         ctx.strokeStyle = '#e94560';
         ctx.lineWidth   = 1.5;
         ctx.beginPath();
-        ctx.roundRect(x, y, 230, 80, 10);
+        ctx.roundRect(x, y, 210, 72, 8);
         ctx.stroke();
 
-        // Name
-        ctx.fillStyle  = '#ffffff';
-        ctx.font       = 'bold 14px sans-serif';
-        ctx.fillText(`${name} Lv.${level}`, x + 10, y + 20);
+        ctx.fillStyle = '#ffffff';
+        ctx.font      = 'bold 13px sans-serif';
+        ctx.fillText(`${name}  Lv.${level}`, x + 10, y + 18);
 
-        // Status badge
         if (status) {
             ctx.fillStyle = getStatusColor(status);
             ctx.beginPath();
-            ctx.roundRect(x + 140, y + 8, 78, 18, 5);
+            ctx.roundRect(x + 130, y + 6, 68, 16, 4);
             ctx.fill();
             ctx.fillStyle = '#ffffff';
-            ctx.font      = 'bold 11px sans-serif';
-            ctx.fillText(status.toUpperCase(), x + 148, y + 21);
+            ctx.font      = 'bold 10px sans-serif';
+            ctx.fillText(status.toUpperCase(), x + 136, y + 18);
         }
 
-        // HP label
         ctx.fillStyle = '#aaaaaa';
         ctx.font      = '11px sans-serif';
-        ctx.fillText('HP', x + 10, y + 40);
+        ctx.fillText('HP', x + 10, y + 38);
 
-        // Bar track
-        ctx.fillStyle = '#333355';
+        ctx.fillStyle = '#2a2a4a';
         ctx.beginPath();
-        ctx.roundRect(x + 28, y + 29, barW, barH, 6);
+        ctx.roundRect(x + 28, y + 28, barW, barH, 5);
         ctx.fill();
 
-        // Bar fill — color based on HP %
         let barColor = '#44cc44';
         if (pct <= 0.5) barColor = '#ffcc00';
         if (pct <= 0.2) barColor = '#ff4444';
@@ -1509,14 +1501,13 @@ async function generateBattleImage(battle) {
         if (filled > 0) {
             ctx.fillStyle = barColor;
             ctx.beginPath();
-            ctx.roundRect(x + 28, y + 29, filled, barH, 6);
+            ctx.roundRect(x + 28, y + 28, filled, barH, 5);
             ctx.fill();
         }
 
-        // HP numbers
         ctx.fillStyle = '#ffffff';
-        ctx.font      = 'bold 12px sans-serif';
-        ctx.fillText(`${current}/${max}`, x + 28, y + 60);
+        ctx.font      = 'bold 11px sans-serif';
+        ctx.fillText(`${current}/${max}`, x + 28, y + 58);
     }
 
     function getStatusColor(status) {
@@ -1527,27 +1518,26 @@ async function generateBattleImage(battle) {
         return map[status] || '#666666';
     }
 
-    // ── Draw HP bars ──
-    // Enemy (top right area)
+    // ── Enemy HP bar — RIGHT side (opposite the sprite) ──
     drawHPBar(
-        W - 250, 10,
+        W - 225, 15,
         p2.currentHp, p2.maxHp,
-        'HP', formatPokeName(p2.pokemon.name), p2.pokemon.level,
+        formatPokeName(p2.pokemon.name), p2.pokemon.level,
         p2.statusEffect
     );
 
-    // Player (bottom left area)
+    // ── Player HP bar — LEFT side bottom (opposite the sprite) ──
     drawHPBar(
-        20, H - 95,
+        15, H - 88,
         p1.currentHp, p1.maxHp,
-        'HP', formatPokeName(p1.pokemon.name), p1.pokemon.level,
+        formatPokeName(p1.pokemon.name), p1.pokemon.level,
         p1.statusEffect
     );
 
-    // ── VS text in center ──
-    ctx.fillStyle = 'rgba(233, 69, 96, 0.8)';
-    ctx.font      = 'bold 32px sans-serif';
-    ctx.fillText('VS', W / 2 - 18, H / 2 + 10);
+    // ── VS text ──
+    ctx.fillStyle = 'rgba(233, 69, 96, 0.85)';
+    ctx.font      = 'bold 28px sans-serif';
+    ctx.fillText('VS', W / 2 - 16, H / 2 + 8);
 
     return canvas.toBuffer('image/png');
 }
