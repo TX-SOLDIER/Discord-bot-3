@@ -19,7 +19,6 @@ const {
     Partials,
 } = require('discord.js');
 require('dotenv').config();
-const fetch = (...args) => import('node-fetch').then(({default: f}) => f(...args));
 const express = require('express');
 const fs      = require('fs');
 
