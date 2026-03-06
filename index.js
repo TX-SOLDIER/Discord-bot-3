@@ -4947,7 +4947,7 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
             return reply('❌ Only **Officers**, **Generals**, and the **Bot Owner** can give Pokémon.');
 
         const target  = message.mentions.users.first() || await resolveUser(client, args[0]);
-        const nameArg = message.mentions.users.size ? args[0] : args[1];
+        const nameArg = message.mentions.users.size ? args[1] : args[1];
         const isShiny = args.includes('shiny');
         const lvlArg  = args.slice(2).find(a => !isNaN(parseInt(a)) && parseInt(a) >= 1 && parseInt(a) <= 100);
         const level   = lvlArg ? parseInt(lvlArg) : 5;
