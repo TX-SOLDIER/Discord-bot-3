@@ -1692,7 +1692,7 @@ function applyMoveEffect(move, target) {
     return messages;
 }
 
-function buildBattleEmbed(battle, turnLog = []) {
+function buildBattleEmbed(battle, turnLog = [], imageAttachment = null) {
     const p1    = battle.player1;
     const p2    = battle.player2;
     const isBot = battle.type === 'pve';
@@ -1751,7 +1751,8 @@ function buildBattleEmbed(battle, turnLog = []) {
     }
  if (p2.pokemon.sprite) embed.setImage(p2.pokemon.sprite);
     if (p1.pokemon.sprite) embed.setThumbnail(p1.pokemon.sprite);
-    embed.setFooter({ text: 'SOLDIER³ Pokémon Battle' }).setTimestamp();
+    if (imageAttachment) embed.setImage('attachment://battle.png');
+    embed.setFooter({ text: 'SOLDIER² Pokémon Battle' }).setTimestamp();
     return embed;
 }
 
@@ -1902,7 +1903,9 @@ async function executeTurn(battleId, channel) {
 
     const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
     if (battleMsg) {
-        await battleMsg.edit({ embeds: [buildBattleEmbed(battle, turnLog)] }).catch(() => {});
+        const imgBuf  = await generateBattleImage(battle).catch(() => null);
+        const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: 'battle.png' }) : null;
+        await battleMsg.edit({ embeds: [buildBattleEmbed(battle, turnLog, imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
         await battleMsg.reactions.removeAll().catch(() => {});
         for (const emoji of ['1️⃣','2️⃣','3️⃣','4️⃣']) await battleMsg.react(emoji).catch(() => {});
     }
@@ -1952,8 +1955,13 @@ async function endBattle(battleId, channel, turnLog, winnerSide) {
     }
 
     battle.phase = 'ended';
-    const finalEmbed = buildBattleEmbed(battle, turnLog);
+    const imgBuf     = await generateBattleImage(battle).catch(() => null);
+    const imgFile    = imgBuf ? new AttachmentBuilder(imgBuf, { name: 'battle.png' }) : null;
+    const finalEmbed = buildBattleEmbed(battle, turnLog, imgFile);
     finalEmbed.setColor(0xFFD700).setTitle('🏆 Battle Over!');
+
+    const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
+    if (battleMsg) await battleMsg.edit({ embeds: [finalEmbed], files: imgFile ? [imgFile] : [] }).catch(() => {});
 
     const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
     if (battleMsg) await battleMsg.edit({ embeds: [finalEmbed] }).catch(() => {});
@@ -2295,7 +2303,9 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
             const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
             if (battleMsg) {
-                await battleMsg.edit({ embeds: [buildBattleEmbed(battle)] }).catch(() => {});
+                const imgBuf  = await generateBattleImage(battle).catch(() => null);
+                const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: 'battle.png' }) : null;
+                await battleMsg.edit({ embeds: [buildBattleEmbed(battle, [], imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
                 await battleMsg.reactions.removeAll().catch(() => {});
                 for (const emoji of moveEmojis) {
                     await battleMsg.react(emoji).catch(() => {});
@@ -5812,8 +5822,10 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
             // Bot pre-selects move
             battle.p2Move = await getBotMove(battle.player2);
 
-            const battleEmbed = buildBattleEmbed(battle);
-            const battleMsg   = await message.channel.send({ embeds: [battleEmbed] });
+            const battleImgBuf = await generateBattleImage(battle).catch(() => null);
+            const battleFile   = battleImgBuf ? new AttachmentBuilder(battleImgBuf, { name: 'battle.png' }) : null;
+            const battleEmbed  = buildBattleEmbed(battle, [], battleFile);
+            const battleMsg    = await message.channel.send({ embeds: [battleEmbed], files: battleFile ? [battleFile] : [] });
             battle.battleMsgId = battleMsg.id;
 
             for (const emoji of ['1️⃣','2️⃣','3️⃣','4️⃣']) {
@@ -5912,8 +5924,10 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
                 if (!botData.activeBattles) botData.activeBattles = {};
                 botData.activeBattles[battleId] = battle;
 
-                const battleEmbed = buildBattleEmbed(battle);
-                const battleMsg   = await message.channel.send({ embeds: [battleEmbed] });
+                const battleImgBuf = await generateBattleImage(battle).catch(() => null);
+                const battleFile   = battleImgBuf ? new AttachmentBuilder(battleImgBuf, { name: 'battle.png' }) : null;
+                const battleEmbed  = buildBattleEmbed(battle, [], battleFile);
+                const battleMsg    = await message.channel.send({ embeds: [battleEmbed], files: battleFile ? [battleFile] : [] });
                 battle.battleMsgId = battleMsg.id;
 
                 for (const emoji of ['1️⃣','2️⃣','3️⃣','4️⃣']) {
