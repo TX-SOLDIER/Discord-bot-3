@@ -1963,9 +1963,7 @@ async function endBattle(battleId, channel, turnLog, winnerSide) {
     const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
     if (battleMsg) await battleMsg.edit({ embeds: [finalEmbed], files: imgFile ? [imgFile] : [] }).catch(() => {});
 
-    const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
-    if (battleMsg) await battleMsg.edit({ embeds: [finalEmbed] }).catch(() => {});
-
+    
     clearMoveTimeout(battleId);
     delete botData.activeBattles[battleId];
     markDirty(); scheduleSave();
