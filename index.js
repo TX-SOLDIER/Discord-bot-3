@@ -1400,9 +1400,6 @@ function resumeAllSpawns() {
 //  POKÉMON PHASE 2 — SPAWN & CATCH HELPERS
 // ============================================================
 
-// In-memory spawn timers — not persisted
-const spawnTimers = {};
-
 // ── Build spawn embed ──
 function buildSpawnEmbed(pokemon, shiny) {
     const sprite = shiny ? pokemon.spriteShiny : pokemon.sprite;
