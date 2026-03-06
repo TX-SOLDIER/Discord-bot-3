@@ -1593,8 +1593,9 @@ function buildBattleEmbed(battle, turnLog = []) {
             inline: false,
         });
     }
-
-    embed.setFooter({ text: 'SOLDIER² Pokémon Battle' }).setTimestamp();
+ if (p2.pokemon.sprite) embed.setImage(p2.pokemon.sprite);
+    if (p1.pokemon.sprite) embed.setThumbnail(p1.pokemon.sprite);
+    embed.setFooter({ text: 'SOLDIER³ Pokémon Battle' }).setTimestamp();
     return embed;
 }
 
