@@ -4949,7 +4949,7 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
         const target  = message.mentions.users.first() || await resolveUser(client, args[0]);
         const nameArg = message.mentions.users.size ? args[0] : args[1];
         const isShiny = args.includes('shiny');
-        const lvlArg  = args.find(a => !isNaN(parseInt(a)) && parseInt(a) >= 1 && parseInt(a) <= 100);
+        const lvlArg  = args.slice(2).find(a => !isNaN(parseInt(a)) && parseInt(a) >= 1 && parseInt(a) <= 100);
         const level   = lvlArg ? parseInt(lvlArg) : 5;
 
         if (!target)  return reply('❌ Usage: `×givepokemon @user <name> [shiny] [level]`');
