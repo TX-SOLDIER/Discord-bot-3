@@ -1220,6 +1220,12 @@ async function handleLevelUps(pkm, levels, channel, userId) {
 
 // ── Fetch Pokémon from PokéAPI with cache ──
 async function fetchPokemon(nameOrId) {
+const key = String(nameOrId).toLowerCase();
+    if (botData.pokemonCache[key]) return botData.pokemonCache[key];
+    try {
+        const res = await fetch(`${POKEDEX_URL}/pokemon/${key}`);
+        if (!res.ok) return null;
+        const data = await res.json();
  const levelUpMoves = data.moves
             .filter(m => m.version_group_details.some(v => v.move_learn_method.name === 'level-up'))
             .map(m => ({
@@ -1280,6 +1286,11 @@ async function fetchPokemon(nameOrId) {
                 }
             }
         } catch {}   
+        botData.pokemonCache[key] = parsed;
+        markDirty(); scheduleSave();
+        return parsed;
+    } catch { return null; }
+}
 
 // ── Fetch move data with cache ──
 async function fetchMove(moveName) {
