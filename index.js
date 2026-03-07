@@ -1,7 +1,7 @@
 'use strict';
 
-// ★ SOLDIER² — Ultimate Mod & Rank Authority System ★ \\
-//  TX-SOLDIER | Prefix: × \\
+// ★ SOLDIER³ — Ultimate Mod & Rank Authority System ★ \\
+//  TX-SOLDIER | Prefix: +\\
 
 // ============================================================
 // ☆ SECTION 1 START: IMPORTS & CLIENT SETUP ☆
@@ -53,7 +53,7 @@ const client = new Client({
 //  CONSTANTS
 // ============================================================
 const DATA_FILE = './botData.json';
-const PREFIX    = '×';
+const PREFIX    = '+';
 const OWNER_ID  = '782155864134909952';
 
 const SYM_GENERAL  = '★';
@@ -6087,7 +6087,7 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
                 `• All 1025 Pokémon from every generation can spawn and be given`
             )
             .setImage('https://media.giphy.com/media/3ohzdYJK1wAdPWVk88/giphy.gif')
-            .setFooter({ text: 'SOLDIER² Pokémon System • Bot developer: TX-SOLDIER' });
+            .setFooter({ text: 'SOLDIER³ Pokémon System • Bot developer: TX-SOLDIER' });
 
         await message.channel.send({ embeds: [embed1] });
         await message.channel.send({ embeds: [embed2] });
@@ -6247,7 +6247,7 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
                 `• \`${prefix}enable <command>\` — Re-enable a command`
             )
             .setImage('https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif')
-            .setFooter({ text: 'SOLDIER² — Bot developer: TX-SOLDIER' });
+            .setFooter({ text: 'SOLDIER³ — Bot developer: TX-SOLDIER' });
 
         await message.channel.send({ embeds: [embed1] });
         await message.channel.send({ embeds: [embed2] });
@@ -6331,7 +6331,7 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
                 `• \`${prefix}blacklistedlist\` — View all blacklisted users & servers`
             )
             .setImage('https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif')
-            .setFooter({ text: 'SOLDIER² — Restricted Command List • Bot developer: TX-SOLDIER' });
+            .setFooter({ text: 'SOLDIER³ — Restricted Command List • Bot developer: TX-SOLDIER' });
 
         await message.channel.send({ embeds: [embed1] });
         await message.channel.send({ embeds: [embed2] });
@@ -6350,7 +6350,7 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName === 'hello') {
-        return interaction.reply('👋 Hello! I am **SOLDIER²** — the Ultimate Mod & Rank Authority System. ★');
+        return interaction.reply('👋 Hello! I am **SOLDIER³** — the Ultimate Mod & Rank Authority System. ★');
     }
 });
 
