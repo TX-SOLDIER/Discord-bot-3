@@ -105,6 +105,75 @@ const MAX_LEVEL = 100;
 const MAX_PRESTIGE = 10;
 const XP_PER_LEVEL = 500;
 const XP_COOLDOWN = 10000; // 10 seconds between XP gains
+// ============================================================
+//  POKÉ STORE — ITEM DEFINITIONS
+// ============================================================
+const POKE_ITEMS = {
+    pokeballs: {
+        'poke-ball':       { price: 200,    catchMult: 1,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png',        label: 'Poké Ball',       desc: 'A basic Ball for catching wild Pokémon.' },
+        'great-ball':      { price: 600,    catchMult: 1.5,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png',       label: 'Great Ball',      desc: 'Higher catch rate than a Poké Ball.' },
+        'ultra-ball':      { price: 1200,   catchMult: 2,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png',       label: 'Ultra Ball',      desc: 'Excellent catch rate.' },
+        'master-ball':     { price: 100000, catchMult: 255,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png',      label: 'Master Ball',     desc: 'Catches any Pokémon without fail.' },
+        'safari-ball':     { price: 500,    catchMult: 1.5,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/safari-ball.png',      label: 'Safari Ball',     desc: 'Used in the Safari Zone.' },
+        'fast-ball':       { price: 800,    catchMult: 4,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/fast-ball.png',        label: 'Fast Ball',       desc: '4× catch rate on fast Pokémon.' },
+        'level-ball':      { price: 800,    catchMult: 2,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/level-ball.png',       label: 'Level Ball',      desc: 'Better for lower level Pokémon.' },
+        'lure-ball':       { price: 800,    catchMult: 3,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lure-ball.png',        label: 'Lure Ball',       desc: '3× on Pokémon caught while fishing.' },
+        'heavy-ball':      { price: 800,    catchMult: 2,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/heavy-ball.png',       label: 'Heavy Ball',      desc: 'Better for heavier Pokémon.' },
+        'love-ball':       { price: 800,    catchMult: 8,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/love-ball.png',        label: 'Love Ball',       desc: '8× if opposite gender.' },
+        'friend-ball':     { price: 1000,   catchMult: 1,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/friend-ball.png',      label: 'Friend Ball',     desc: 'Raises caught Pokémon friendship.' },
+        'moon-ball':       { price: 1000,   catchMult: 4,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/moon-ball.png',        label: 'Moon Ball',       desc: '4× on Moon Stone evolvers.' },
+        'sport-ball':      { price: 300,    catchMult: 1.5,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sport-ball.png',       label: 'Sport Ball',      desc: 'Used in Bug-Catching Contests.' },
+        'net-ball':        { price: 1000,   catchMult: 3.5,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/net-ball.png',         label: 'Net Ball',        desc: '3.5× on Water and Bug types.' },
+        'dive-ball':       { price: 1000,   catchMult: 3.5,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dive-ball.png',        label: 'Dive Ball',       desc: '3.5× on Pokémon while diving.' },
+        'nest-ball':       { price: 1000,   catchMult: 3,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/nest-ball.png',        label: 'Nest Ball',       desc: 'Better for lower level Pokémon.' },
+        'repeat-ball':     { price: 1000,   catchMult: 3.5,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/repeat-ball.png',      label: 'Repeat Ball',     desc: '3.5× on previously caught species.' },
+        'timer-ball':      { price: 1000,   catchMult: 4,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/timer-ball.png',       label: 'Timer Ball',      desc: 'Gets better the more turns pass.' },
+        'luxury-ball':     { price: 1500,   catchMult: 1,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png',      label: 'Luxury Ball',     desc: 'Raises friendship of caught Pokémon fast.' },
+        'premier-ball':    { price: 200,    catchMult: 1,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/premier-ball.png',     label: 'Premier Ball',    desc: 'A rare Ball made for special occasions.' },
+        'dusk-ball':       { price: 1000,   catchMult: 3.5,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dusk-ball.png',        label: 'Dusk Ball',       desc: '3.5× at night or in caves.' },
+        'heal-ball':       { price: 300,    catchMult: 1,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/heal-ball.png',        label: 'Heal Ball',       desc: 'Fully restores caught Pokémon.' },
+        'quick-ball':      { price: 1000,   catchMult: 5,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/quick-ball.png',       label: 'Quick Ball',      desc: '5× catch rate on the first turn.' },
+        'cherish-ball':    { price: 5000,   catchMult: 1,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/cherish-ball.png',     label: 'Cherish Ball',    desc: 'A very rare Ball used for events.' },
+        'park-ball':       { price: 300,    catchMult: 255,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/park-ball.png',        label: 'Park Ball',       desc: 'Guaranteed catch in the Pal Park.' },
+        'dream-ball':      { price: 3000,   catchMult: 4,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dream-ball.png',       label: 'Dream Ball',      desc: '4× on sleeping Pokémon.' },
+        'beast-ball':      { price: 5000,   catchMult: 5,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beast-ball.png',       label: 'Beast Ball',      desc: '5× on Ultra Beasts.' },
+    },
+    healing: {
+        'potion':          { price: 300,    heal: 20,   sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/potion.png',               label: 'Potion',          desc: 'Restores 20 HP to one Pokémon.' },
+        'super-potion':    { price: 700,    heal: 50,   sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/super-potion.png',         label: 'Super Potion',    desc: 'Restores 50 HP to one Pokémon.' },
+        'hyper-potion':    { price: 1200,   heal: 120,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/hyper-potion.png',         label: 'Hyper Potion',    desc: 'Restores 120 HP to one Pokémon.' },
+        'max-potion':      { price: 2500,   heal: 9999, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/max-potion.png',           label: 'Max Potion',      desc: 'Fully restores HP to one Pokémon.' },
+        'full-restore':    { price: 3000,   heal: 9999, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/full-restore.png',         label: 'Full Restore',    desc: 'Fully restores HP and cures status.' },
+        'revive':          { price: 1500,   revive: true, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/revive.png',             label: 'Revive',          desc: 'Revives a fainted Pokémon to half HP.' },
+        'max-revive':      { price: 4000,   revive: true, full: true, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/max-revive.png', label: 'Max Revive', desc: 'Revives a fainted Pokémon to full HP.' },
+        'antidote':        { price: 200,    cures: 'poison',   sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/antidote.png',      label: 'Antidote',        desc: 'Cures poison.' },
+        'burn-heal':       { price: 200,    cures: 'burn',     sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/burn-heal.png',      label: 'Burn Heal',       desc: 'Cures a burn.' },
+        'ice-heal':        { price: 200,    cures: 'freeze',   sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ice-heal.png',       label: 'Ice Heal',        desc: 'Cures a frozen Pokémon.' },
+        'awakening':       { price: 200,    cures: 'sleep',    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/awakening.png',      label: 'Awakening',       desc: 'Wakes up a sleeping Pokémon.' },
+        'paralyze-heal':   { price: 200,    cures: 'paralysis',sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/paralyze-heal.png', label: 'Paralyze Heal',   desc: 'Cures paralysis.' },
+        'full-heal':       { price: 600,    cures: 'all',      sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/full-heal.png',      label: 'Full Heal',       desc: 'Cures all status conditions.' },
+        'ether':           { price: 1200,   pp: 10,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ether.png',                  label: 'Ether',           desc: 'Restores 10 PP to one move.' },
+        'max-ether':       { price: 2000,   pp: 9999,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/max-ether.png',              label: 'Max Ether',       desc: 'Fully restores PP to one move.' },
+        'elixir':          { price: 3000,   ppAll: 10, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/elixir.png',                 label: 'Elixir',          desc: 'Restores 10 PP to all moves.' },
+        'max-elixir':      { price: 4500,   ppAll: 9999, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/max-elixir.png',           label: 'Max Elixir',      desc: 'Fully restores all move PP.' },
+    },
+    berries: {
+        'oran-berry':      { price: 150,    heal: 10,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/oran-berry.png',             label: 'Oran Berry',      desc: 'Restores 10 HP when held.' },
+        'sitrus-berry':    { price: 400,    heal: 25,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sitrus-berry.png',           label: 'Sitrus Berry',    desc: 'Restores 25 HP when held.' },
+        'lum-berry':       { price: 500,    cures: 'all', sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lum-berry.png',           label: 'Lum Berry',       desc: 'Cures any status condition.' },
+        'chesto-berry':    { price: 200,    cures: 'sleep',    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chesto-berry.png',   label: 'Chesto Berry',    desc: 'Cures sleep.' },
+        'pecha-berry':     { price: 200,    cures: 'poison',   sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pecha-berry.png',    label: 'Pecha Berry',     desc: 'Cures poison.' },
+        'rawst-berry':     { price: 200,    cures: 'burn',     sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rawst-berry.png',    label: 'Rawst Berry',     desc: 'Cures a burn.' },
+        'aspear-berry':    { price: 200,    cures: 'freeze',   sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/aspear-berry.png',   label: 'Aspear Berry',    desc: 'Cures a frozen Pokémon.' },
+        'cheri-berry':     { price: 200,    cures: 'paralysis',sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/cheri-berry.png',    label: 'Cheri Berry',     desc: 'Cures paralysis.' },
+        'leppa-berry':     { price: 600,    pp: 10,    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leppa-berry.png',            label: 'Leppa Berry',     desc: 'Restores 10 PP to one move.' },
+        'figy-berry':      { price: 300,    heal: 'third', sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/figy-berry.png',         label: 'Figy Berry',      desc: 'Restores 1/3 max HP in battle.' },
+        'razz-berry':      { price: 100,    catchBoost: 1.5, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/razz-berry.png',       label: 'Razz Berry',      desc: '1.5× catch rate when used during a catch.' },
+        'nanab-berry':     { price: 100,    catchBoost: 1.3, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/nanab-berry.png',      label: 'Nanab Berry',     desc: 'Calms wild Pokémon slightly.' },
+        'pinap-berry':     { price: 200,    catchBoost: 2,   sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pinap-berry.png',      label: 'Pinap Berry',     desc: '2× catch rate on next throw.' },
+        'golden-razz-berry': { price: 800,  catchBoost: 2.5, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/golden-razz-berry.png', label: 'Golden Razz',   desc: '2.5× catch rate when used.' },
+    },
+};
 // ==================================================
 // GLOBAL MASTER LOG CHANNELS (HARDCODED)
 // ==================================================
@@ -165,7 +234,9 @@ let botData = {
     xp:                 {},      // { guildId: { userId: { xp, level, prestige } } }
     xpCooldowns:        {},      // { guildId: { userId: timestamp } }
     levelupChannels:    {},   // { guildId: channelId }
-    pokemon:             {},
+    pokeBags:           {},
+    // pokeBags[userId] = { pokeballs: {}, healing: {}, berries: {} }
+    pokemon:            {},
     // pokemon[userId] = {
     //   collection: [ { uid, id, name, shiny, level, xp, moves, types, stats, sprite } ],
     //   party:      [ indexes into collection, max 6 ],
@@ -1284,6 +1355,287 @@ function canSetSpawnChannel(guildId, userId) {
     );
 }
 // ============================================================
+//  POKÉ BAG HELPERS
+// ============================================================
+function getUserBag(userId) {
+    if (!botData.pokeBags) botData.pokeBags = {};
+    if (!botData.pokeBags[userId]) {
+        botData.pokeBags[userId] = { pokeballs: {}, healing: {}, berries: {} };
+    }
+    const bag = botData.pokeBags[userId];
+    if (!bag.pokeballs) bag.pokeballs = {};
+    if (!bag.healing)   bag.healing   = {};
+    if (!bag.berries)   bag.berries   = {};
+    return bag;
+}
+
+function getBagItemCount(userId, category, itemKey) {
+    const bag = getUserBag(userId);
+    return bag[category]?.[itemKey] || 0;
+}
+
+function addToBag(userId, category, itemKey, qty = 1) {
+    const bag = getUserBag(userId);
+    const current = bag[category][itemKey] || 0;
+    bag[category][itemKey] = Math.min(100, current + qty);
+    markDirty(); scheduleSave();
+    return bag[category][itemKey];
+}
+
+function removeFromBag(userId, category, itemKey, qty = 1) {
+    const bag = getUserBag(userId);
+    const current = bag[category][itemKey] || 0;
+    if (current < qty) return false;
+    bag[category][itemKey] = current - qty;
+    if (bag[category][itemKey] === 0) delete bag[category][itemKey];
+    markDirty(); scheduleSave();
+    return true;
+}
+
+function getTotalBalls(userId) {
+    const bag = getUserBag(userId);
+    return Object.values(bag.pokeballs).reduce((a, b) => a + b, 0);
+}
+
+// ── Find an item across all categories ──
+function findItemAnywhere(key) {
+    const k = key.toLowerCase();
+    for (const [cat, items] of Object.entries(POKE_ITEMS)) {
+        if (items[k]) return { category: cat, key: k, item: items[k] };
+    }
+    // Try fuzzy match on label
+    for (const [cat, items] of Object.entries(POKE_ITEMS)) {
+        for (const [ik, iv] of Object.entries(items)) {
+            if (iv.label.toLowerCase() === k || ik.replace(/-/g, ' ') === k) {
+                return { category: cat, key: ik, item: iv };
+            }
+        }
+    }
+    return null;
+}
+
+// ── Generate store canvas image ──
+async function generateStoreCanvas(category = 'pokeballs', page = 0) {
+    const items   = Object.entries(POKE_ITEMS[category]);
+    const perPage = 12;
+    const start   = page * perPage;
+    const slice   = items.slice(start, start + perPage);
+    const cols    = 4;
+    const rows    = Math.ceil(slice.length / cols);
+    const cellW   = 180, cellH = 100;
+    const padX    = 20, padY = 20;
+    const headerH = 90;
+    const W = cols * cellW + padX * 2;
+    const H = headerH + rows * cellH + padY * 2 + 40;
+
+    const canvas = createCanvas(W, H);
+    const ctx    = canvas.getContext('2d');
+
+    // ── Background — Pokémart style ──
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#1565C0');
+    bg.addColorStop(0.4, '#0D47A1');
+    bg.addColorStop(1, '#0a2a6e');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // ── Checkerboard floor pattern ──
+    ctx.globalAlpha = 0.06;
+    for (let r = 0; r < H / 30; r++) {
+        for (let c = 0; c < W / 30; c++) {
+            if ((r + c) % 2 === 0) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(c * 30, r * 30, 30, 30);
+            }
+        }
+    }
+    ctx.globalAlpha = 1;
+
+    // ── Header bar ──
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(0, 0, W, headerH);
+
+    // ── Pokémart logo text ──
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText('🏪 POKÉMART', padX, 38);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '14px sans-serif';
+    const catLabels = { pokeballs: 'Poké Balls', healing: 'Medicine', berries: 'Berries' };
+    ctx.fillText(`Category: ${catLabels[category]}  •  Page ${page + 1}/${Math.ceil(items.length / perPage)}`, padX, 60);
+    ctx.fillText(`Use ×buy <item name> [qty] to purchase`, padX, 78);
+
+    // ── Divider ──
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth   = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, headerH);
+    ctx.lineTo(W, headerH);
+    ctx.stroke();
+
+    // ── Item cells ──
+    for (let i = 0; i < slice.length; i++) {
+        const [key, item] = slice[i];
+        const col  = i % cols;
+        const row  = Math.floor(i / cols);
+        const x    = padX + col * cellW;
+        const y    = headerH + padY + row * cellH;
+
+        // Cell background
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath();
+        ctx.roundRect(x, y, cellW - 8, cellH - 8, 8);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,215,0,0.3)';
+        ctx.lineWidth   = 1;
+        ctx.beginPath();
+        ctx.roundRect(x, y, cellW - 8, cellH - 8, 8);
+        ctx.stroke();
+
+        // Item sprite
+        try {
+            const img = await loadImage(item.sprite);
+            ctx.drawImage(img, x + 6, y + 10, 36, 36);
+        } catch {}
+
+        // Item name
+        ctx.fillStyle = '#ffffff';
+        ctx.font      = 'bold 11px sans-serif';
+        ctx.fillText(item.label.slice(0, 18), x + 48, y + 22);
+
+        // Price
+        ctx.fillStyle = '#FFD700';
+        ctx.font      = 'bold 12px sans-serif';
+        ctx.fillText(`💰 ${item.price.toLocaleString()}`, x + 48, y + 38);
+
+        // Multiplier or heal info
+        ctx.fillStyle = '#aaddff';
+        ctx.font      = '10px sans-serif';
+        if (item.catchMult)  ctx.fillText(`${item.catchMult}× catch rate`, x + 48, y + 52);
+        else if (item.heal && item.heal !== 'third') ctx.fillText(`+${item.heal === 9999 ? 'Full' : item.heal} HP`, x + 48, y + 52);
+        else if (item.cures)  ctx.fillText(`Cures ${item.cures}`, x + 48, y + 52);
+        else if (item.pp)     ctx.fillText(`+${item.pp === 9999 ? 'Full' : item.pp} PP`, x + 48, y + 52);
+        else if (item.ppAll)  ctx.fillText(`+${item.ppAll === 9999 ? 'Full' : item.ppAll} PP all`, x + 48, y + 52);
+        else if (item.catchBoost) ctx.fillText(`${item.catchBoost}× catch boost`, x + 48, y + 52);
+    }
+
+    // ── Footer ──
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, H - 30, W, 30);
+    ctx.fillStyle = '#aaaaaa';
+    ctx.font      = '11px sans-serif';
+    ctx.fillText('SOLDIER² Pokémart  •  ×pokestore pokeballs/healing/berries', padX, H - 10);
+
+    return canvas.toBuffer('image/png');
+}
+
+// ── Generate bag canvas ──
+async function generateBagCanvas(userId, category = 'pokeballs') {
+    const bag    = getUserBag(userId);
+    const owned  = Object.entries(bag[category] || {}).filter(([, qty]) => qty > 0);
+    const cols   = 4;
+    const rows   = Math.max(1, Math.ceil(owned.length / cols));
+    const cellW  = 160, cellH = 90;
+    const padX   = 20, padY = 20;
+    const headerH = 80;
+    const W = cols * cellW + padX * 2;
+    const H = headerH + rows * cellH + padY * 2 + 30;
+
+    const canvas = createCanvas(W, H);
+    const ctx    = canvas.getContext('2d');
+
+    // Background
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#2d1b69');
+    bg.addColorStop(1, '#11091f');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle grid
+    ctx.globalAlpha = 0.05;
+    for (let r = 0; r < H / 25; r++) {
+        for (let c = 0; c < W / 25; c++) {
+            if ((r + c) % 2 === 0) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(c * 25, r * 25, 25, 25);
+            }
+        }
+    }
+    ctx.globalAlpha = 1;
+
+    // Header
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, W, headerH);
+
+    ctx.fillStyle = '#FFD700';
+    ctx.font      = 'bold 24px sans-serif';
+    ctx.fillText('🎒 BAG', padX, 35);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font      = '13px sans-serif';
+    const catLabels = { pokeballs: 'Poké Balls', healing: 'Medicine', berries: 'Berries' };
+    ctx.fillText(`${catLabels[category]}  •  Use ×bag pokeballs/healing/berries`, padX, 58);
+
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, headerH);
+    ctx.lineTo(W, headerH);
+    ctx.stroke();
+
+    if (owned.length === 0) {
+        ctx.fillStyle = '#aaaaaa';
+        ctx.font      = '16px sans-serif';
+        ctx.fillText('No items in this category.', padX, headerH + 50);
+    }
+
+    for (let i = 0; i < owned.length; i++) {
+        const [key, qty] = owned[i];
+        const item = POKE_ITEMS[category]?.[key];
+        if (!item) continue;
+
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const x   = padX + col * cellW;
+        const y   = headerH + padY + row * cellH;
+
+        ctx.fillStyle = 'rgba(255,255,255,0.07)';
+        ctx.beginPath();
+        ctx.roundRect(x, y, cellW - 8, cellH - 8, 8);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,215,0,0.25)';
+        ctx.lineWidth   = 1;
+        ctx.beginPath();
+        ctx.roundRect(x, y, cellW - 8, cellH - 8, 8);
+        ctx.stroke();
+
+        try {
+            const img = await loadImage(item.sprite);
+            ctx.drawImage(img, x + 8, y + 10, 32, 32);
+        } catch {}
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font      = 'bold 11px sans-serif';
+        ctx.fillText(item.label.slice(0, 16), x + 46, y + 22);
+
+        ctx.fillStyle = '#FFD700';
+        ctx.font      = 'bold 14px sans-serif';
+        ctx.fillText(`×${qty}`, x + 46, y + 42);
+    }
+
+    // Footer
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, H - 26, W, 26);
+    ctx.fillStyle = '#888888';
+    ctx.font      = '10px sans-serif';
+    ctx.fillText('SOLDIER² Bag  •  Use ×useitem <item> <party slot>', padX, H - 8);
+
+    return canvas.toBuffer('image/png');
+}
+// ============================================================
 //  POKÉMON PHASE 2 — SPAWN & CATCH HELPERS
 // ============================================================
 
@@ -1297,12 +1649,14 @@ function buildSpawnEmbed(pokemon, shiny) {
         .setColor(shiny ? 0xFFD700 : 0xFF6900)
         .setTitle(`${shiny ? '✨ A shiny wild ' : '🌿 A wild '}**${formatPokeName(pokemon.name)}** appeared!`)
         .setDescription(
-            `React with ⚡ to attempt to catch it!\n\n` +
+            `Use \`×catch <ball>\` to throw a Pokéball!\n` +
+            `Example: \`×catch poke-ball\` or \`×catch ultra-ball\`\n\n` +
             `**Type:** ${pokemon.types.map(t => formatPokeName(t)).join(' / ')}\n` +
-            `${shiny ? '\n✨ **This is a SHINY Pokémon! Extremely rare!**' : ''}`
+            `${shiny ? '\n✨ **This is a SHINY Pokémon! Extremely rare!**' : ''}\n\n` +
+            `*No Pokéballs? Buy some with \`×pokestore\`*`
         )
         .setImage(sprite)
-        .setFooter({ text: `Flees in ${SPAWN_DESPAWN_MINS} minutes • SOLDIER² Pokémon` })
+        .setFooter({ text: `Flees in ${SPAWN_DESPAWN_MINS} minutes • SOLDIER³ Pokémon` })
         .setTimestamp();
 }
 
@@ -1342,8 +1696,6 @@ async function spawnWildPokemon(guildId) {
     const embed    = buildSpawnEmbed(data, shiny);
     const spawnMsg = await channel.send({ embeds: [embed] }).catch(() => null);
     if (!spawnMsg) return;
-
-    await spawnMsg.react('⚡').catch(() => {});
 
     if (!botData.activeSpawns) botData.activeSpawns = {};
     botData.activeSpawns[guildId] = {
@@ -2159,81 +2511,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     const gid     = reaction.message.guild.id;
     const channel = reaction.message.channel;
-
-    // ══════════════════════════════════════════
-    //  POKÉMON — CATCH ATTEMPT
-    // ══════════════════════════════════════════
-    const activeSpawn = botData.activeSpawns?.[gid];
-    if (
-        activeSpawn &&
-        reaction.message.id === activeSpawn.messageId &&
-        reaction.emoji.name === '⚡'
-    ) {
-        if (activeSpawn.catchAttempts[user.id]) return;
-        activeSpawn.catchAttempts[user.id] = true;
-        markDirty(); scheduleSave();
-
-        const pokemon = activeSpawn.pokemon;
-        const shiny   = activeSpawn.shiny;
-        const success = calculateCatchSuccess(
-            pokemon.catchRate,
-            pokemon.stats.hp,
-            pokemon.stats.hp
-        );
-
-        if (success) {
-            const entry = buildPokemonEntry(pokemon, shiny, 5);
-            addPokemonToUser(user.id, entry);
-
-            delete botData.activeSpawns[gid];
-            markDirty(); scheduleSave();
-
-            const caughtEmbed = new EmbedBuilder()
-                .setColor(shiny ? 0xFFD700 : 0x24c718)
-                .setTitle(`${shiny ? '✨ ' : ''}🎉 Gotcha! **${formatPokeName(pokemon.name)}** was caught!`)
-                .setDescription(`<@${user.id}> caught **${shiny ? '✨ ' : ''}${formatPokeName(pokemon.name)}**!`)
-                .setImage(shiny ? pokemon.spriteShiny : pokemon.sprite)
-                .addFields(
-                    { name: '🏷️ Trainer', value: `<@${user.id}>`,                                          inline: true },
-                    { name: '⭐ Level',   value: `5`,                                                        inline: true },
-                    { name: '✨ Shiny',   value: shiny ? 'YES! 🌟' : 'No',                                  inline: true },
-                    { name: '🔷 Type',    value: pokemon.types.map(t => formatPokeName(t)).join(' / '),      inline: true },
-                )
-                .setFooter({ text: 'SOLDIER² Pokémon' })
-                .setTimestamp();
-
-            await reaction.message.edit({ embeds: [caughtEmbed] }).catch(() => {});
-            await channel.send({
-                content: `<@${user.id}>`,
-                embeds: [
-                    new EmbedBuilder()
-                        .setColor(shiny ? 0xFFD700 : 0x24c718)
-                        .setTitle(`${shiny ? '✨ Shiny ' : ''}Pokémon Caught!`)
-                        .setDescription(
-                            `**${formatPokeName(pokemon.name)}** was added to your collection!\n` +
-                            `Use \`×party\` to see your party or \`×collection\` to view all your Pokémon.`
-                        )
-                        .setThumbnail(shiny ? pokemon.spriteShiny : pokemon.sprite)
-                        .setTimestamp()
-                        .setFooter({ text: 'SOLDIER² Pokémon' })
-                ]
-            }).catch(() => {});
-
-        } else {
-            await channel.send({
-                embeds: [
-                    new EmbedBuilder()
-                        .setColor(0xE74C3C)
-                        .setTitle(`💨 **${formatPokeName(pokemon.name)}** broke free!`)
-                        .setDescription(`<@${user.id}>'s catch attempt failed! Others can still try!`)
-                        .setThumbnail(shiny ? pokemon.spriteShiny : pokemon.sprite)
-                        .setFooter({ text: 'SOLDIER² Pokémon' })
-                        .setTimestamp()
-                ]
-            }).catch(() => {});
-        }
-        return;
-    }
 
     // ══════════════════════════════════════════
     //  POKÉMON — BATTLE MOVE SELECTION
@@ -5357,7 +5634,220 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
 // =========================================================
     //  POKÉMON SYSTEM — ALL COMMANDS
     // =========================================================
+// ──────────────────────────────────────────
+    // ×pokestore [category] [page]
+    // ──────────────────────────────────────────
+    if (command === 'pokestore') {
+        const validCats = ['pokeballs', 'healing', 'berries'];
+        const catArg    = args[0]?.toLowerCase();
+        const pageArg   = parseInt(args[1]) || 1;
+        const category  = validCats.includes(catArg) ? catArg : 'pokeballs';
+        const page      = Math.max(0, pageArg - 1);
+        const items     = Object.entries(POKE_ITEMS[category]);
+        const perPage   = 12;
+        const maxPage   = Math.ceil(items.length / perPage) - 1;
+        const safePage  = Math.min(page, maxPage);
 
+        const imgBuf  = await generateStoreCanvas(category, safePage).catch(() => null);
+        const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: 'store.png' }) : null;
+
+        const embed = new EmbedBuilder()
+            .setColor(0x1565C0)
+            .setTitle('🏪 SOLDIER² Pokémart')
+            .setDescription(
+                `**Categories:** \`×pokestore pokeballs\` • \`×pokestore healing\` • \`×pokestore berries\`\n` +
+                `**Buy:** \`×buy <item-name> [quantity]\`\n` +
+                `**Your bag:** \`×bag\`\n\n` +
+                `*Item names use hyphens — e.g. \`poke-ball\`, \`ultra-ball\`, \`sitrus-berry\`*`
+            )
+            .setFooter({ text: `Page ${safePage + 1}/${maxPage + 1} • SOLDIER² Pokémart` });
+
+        if (imgFile) embed.setImage('attachment://store.png');
+
+        await message.channel.send({
+            embeds: [embed],
+            files:  imgFile ? [imgFile] : [],
+        });
+        return;
+    }
+
+    // ──────────────────────────────────────────
+    // ×buy <item> [qty]
+    // ──────────────────────────────────────────
+    if (command === 'buy') {
+        const qtyArg  = parseInt(args[args.length - 1]);
+        const hasQty  = !isNaN(qtyArg) && qtyArg > 0;
+        const nameArgs = hasQty ? args.slice(0, -1) : args;
+        const itemKey  = nameArgs.join('-').toLowerCase();
+        const qty      = hasQty ? Math.min(qtyArg, 100) : 1;
+
+        if (!itemKey) return reply('❌ Usage: `×buy <item-name> [quantity]`\nExample: `×buy poke-ball 5`');
+
+        const found = findItemAnywhere(itemKey);
+        if (!found) return reply(`❌ Item \`${itemKey}\` not found. Use \`×pokestore\` to browse items.`);
+
+        const { category, key, item } = found;
+        const totalCost = item.price * qty;
+        const balance   = getUserBalance(uid);
+
+        if (balance < totalCost) {
+            return reply(`❌ Not enough gold! You need **${totalCost.toLocaleString()} 💰** but only have **${balance.toLocaleString()} 💰**.`);
+        }
+
+        const currentOwned = getBagItemCount(uid, category, key);
+        if (currentOwned + qty > 100) {
+            return reply(`❌ You can only hold **100** of any item. You already have **${currentOwned}**.`);
+        }
+
+        removeCoins(uid, totalCost);
+        addToBag(uid, category, key, qty);
+
+        const embed = new EmbedBuilder()
+            .setColor(0x1565C0)
+            .setTitle('🛒 Purchase Successful!')
+            .setDescription(`You bought **${qty}× ${item.label}** for **${totalCost.toLocaleString()} 💰**`)
+            .addFields(
+                { name: '💰 Remaining Balance', value: `${(balance - totalCost).toLocaleString()} 💰`, inline: true },
+                { name: '🎒 Now Owned',         value: `${currentOwned + qty}× ${item.label}`,          inline: true },
+            )
+            .setThumbnail(item.sprite)
+            .setFooter({ text: 'SOLDIER² Pokémart' })
+            .setTimestamp();
+
+        await message.channel.send({ embeds: [embed] });
+        return;
+    }
+
+    // ──────────────────────────────────────────
+    // ×bag [category]
+    // ──────────────────────────────────────────
+    if (command === 'bag') {
+        const validCats = ['pokeballs', 'healing', 'berries'];
+        const catArg    = args[0]?.toLowerCase();
+        const category  = validCats.includes(catArg) ? catArg : 'pokeballs';
+
+        const imgBuf  = await generateBagCanvas(uid, category).catch(() => null);
+        const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: 'bag.png' }) : null;
+
+        const bag   = getUserBag(uid);
+        const total = Object.values(bag.pokeballs).reduce((a, b) => a + b, 0)
+                    + Object.values(bag.healing).reduce((a, b) => a + b, 0)
+                    + Object.values(bag.berries).reduce((a, b) => a + b, 0);
+
+        const embed = new EmbedBuilder()
+            .setColor(0x2d1b69)
+            .setTitle(`🎒 ${message.author.username}'s Bag`)
+            .setDescription(
+                `**Total items:** ${total}\n` +
+                `\`×bag pokeballs\` • \`×bag healing\` • \`×bag berries\`\n` +
+                `Buy items at \`×pokestore\``
+            )
+            .setFooter({ text: 'SOLDIER² Bag' });
+
+        if (imgFile) embed.setImage('attachment://bag.png');
+
+        await message.channel.send({
+            embeds: [embed],
+            files:  imgFile ? [imgFile] : [],
+        });
+        return;
+    }
+
+    // ──────────────────────────────────────────
+    // ×catch <ball> — catch wild Pokémon
+    // ──────────────────────────────────────────
+    if (command === 'catch') {
+        const gid         = message.guild.id;
+        const activeSpawn = botData.activeSpawns?.[gid];
+
+        if (!activeSpawn) return reply('❌ There is no wild Pokémon to catch right now!');
+
+        if (activeSpawn.catchAttempts?.[uid]) {
+            return reply('❌ You already attempted to catch this Pokémon!');
+        }
+
+        const ballKey = args.join('-').toLowerCase() || 'poke-ball';
+        const ballDef = POKE_ITEMS.pokeballs[ballKey];
+
+        if (!ballDef) {
+            return reply(`❌ Unknown ball: \`${ballKey}\`. Check \`×pokestore pokeballs\` for available balls.`);
+        }
+
+        const owned = getBagItemCount(uid, 'pokeballs', ballKey);
+        if (owned < 1) {
+            return reply(`❌ You don't have any **${ballDef.label}**! Buy some at \`×pokestore\`.`);
+        }
+
+        // Mark attempt
+        if (!activeSpawn.catchAttempts) activeSpawn.catchAttempts = {};
+        activeSpawn.catchAttempts[uid] = true;
+        removeFromBag(uid, 'pokeballs', ballKey, 1);
+
+        const pokemon = activeSpawn.pokemon;
+        const shiny   = activeSpawn.shiny;
+
+        // Apply ball multiplier to catch rate
+        const boostedRate = Math.min(255, Math.floor(pokemon.catchRate * ballDef.catchMult));
+        const success     = calculateCatchSuccess(boostedRate, pokemon.stats.hp, pokemon.stats.hp);
+
+        if (success) {
+            const entry = buildPokemonEntry(pokemon, shiny, 5);
+            addPokemonToUser(uid, entry);
+
+            delete botData.activeSpawns[gid];
+            markDirty(); scheduleSave();
+
+            // Update spawn message
+            const spawnChannel = client.channels.cache.get(activeSpawn.channelId);
+            if (spawnChannel) {
+                const spawnMsg = await spawnChannel.messages.fetch(activeSpawn.messageId).catch(() => null);
+                if (spawnMsg) {
+                    await spawnMsg.edit({ embeds: [
+                        new EmbedBuilder()
+                            .setColor(shiny ? 0xFFD700 : 0x24c718)
+                            .setTitle(`${shiny ? '✨ ' : ''}🎉 Caught by ${message.author.username}!`)
+                            .setDescription(`<@${uid}> caught **${shiny ? '✨ ' : ''}${formatPokeName(pokemon.name)}** with a **${ballDef.label}**!`)
+                            .setImage(shiny ? pokemon.spriteShiny : pokemon.sprite)
+                            .setFooter({ text: 'SOLDIER² Pokémon' })
+                            .setTimestamp()
+                    ]}).catch(() => {});
+                }
+            }
+
+            const embed = new EmbedBuilder()
+                .setColor(shiny ? 0xFFD700 : 0x24c718)
+                .setTitle(`${shiny ? '✨ Shiny ' : ''}Gotcha! ${formatPokeName(pokemon.name)} was caught!`)
+                .setDescription(`You used a **${ballDef.label}** and caught **${formatPokeName(pokemon.name)}**!`)
+                .addFields(
+                    { name: '🏷️ Trainer',  value: `<@${uid}>`,                                             inline: true },
+                    { name: '⭐ Level',    value: `5`,                                                       inline: true },
+                    { name: '✨ Shiny',    value: shiny ? 'YES! 🌟' : 'No',                                 inline: true },
+                    { name: '🔷 Type',     value: pokemon.types.map(t => formatPokeName(t)).join(' / '),     inline: true },
+                    { name: '🎒 Ball Used',value: ballDef.label,                                             inline: true },
+                    { name: '📊 Catch Rate',value: `${boostedRate}/255 (${Math.round(boostedRate/255*100)}%)`, inline: true },
+                )
+                .setThumbnail(shiny ? pokemon.spriteShiny : pokemon.sprite)
+                .setFooter({ text: 'SOLDIER² Pokémon' })
+                .setTimestamp();
+
+            await message.channel.send({ content: `<@${uid}>`, embeds: [embed] });
+
+        } else {
+            await message.channel.send({ embeds: [
+                new EmbedBuilder()
+                    .setColor(0xE74C3C)
+                    .setTitle(`💨 **${formatPokeName(pokemon.name)}** broke free!`)
+                    .setDescription(
+                        `<@${uid}>'s **${ballDef.label}** failed! Others can still try.\n` +
+                        `*Try a stronger ball or a berry for a better chance!*`
+                    )
+                    .setThumbnail(shiny ? pokemon.spriteShiny : pokemon.sprite)
+                    .setFooter({ text: 'SOLDIER² Pokémon' })
+                    .setTimestamp()
+            ]});
+        }
+        return;
+    }
     // ──────────────────────────────────────────────────
     // ×pokedex <name/id>
     // ──────────────────────────────────────────────────
