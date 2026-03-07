@@ -1208,18 +1208,32 @@ function checkLevelUp(pkm) {
     return levels;
 }
 
+// ── Async post-levelup handler — move learning + evolution ──
+async function handleLevelUps(pkm, levels, channel, userId) {
+    for (const lvl of levels) {
+        await checkNewMoves(pkm, lvl, channel, userId);
+    }
+    if (levels.length > 0) {
+        await checkAndTriggerEvolution(pkm, channel, userId);
+    }
+}
+
 // ── Fetch Pokémon from PokéAPI with cache ──
 async function fetchPokemon(nameOrId) {
-    const key = String(nameOrId).toLowerCase();
-    if (botData.pokemonCache[key]) return botData.pokemonCache[key];
-    try {
-        const res = await fetch(`${POKEDEX_URL}/pokemon/${key}`);
-        if (!res.ok) return null;
-        const data = await res.json();
+ const levelUpMoves = data.moves
+            .filter(m => m.version_group_details.some(v => v.move_learn_method.name === 'level-up'))
+            .map(m => ({
+                level: Math.max(...m.version_group_details
+                    .filter(v => v.move_learn_method.name === 'level-up')
+                    .map(v => v.level_learned_at)),
+                name: m.move.name,
+            }))
+            .sort((a, b) => a.level - b.level);
+
         const parsed = {
-            id:      data.id,
-            name:    data.name,
-            types:   data.types.map(t => t.type.name),
+            id:          data.id,
+            name:        data.name,
+            types:       data.types.map(t => t.type.name),
             stats: {
                 hp:             data.stats.find(s => s.stat.name === 'hp').base_stat,
                 attack:         data.stats.find(s => s.stat.name === 'attack').base_stat,
@@ -1228,23 +1242,44 @@ async function fetchPokemon(nameOrId) {
                 specialDefense: data.stats.find(s => s.stat.name === 'special-defense').base_stat,
                 speed:          data.stats.find(s => s.stat.name === 'speed').base_stat,
             },
-            moves:       data.moves.slice(0, 4).map(m => m.move.name),
-            sprite:      data.sprites.front_default,
-            spriteShiny: data.sprites.front_shiny,
-            catchRate:   100,
+            moves:        data.moves.slice(0, 4).map(m => m.move.name),
+            levelUpMoves,
+            sprite:       data.sprites.front_default,
+            spriteShiny:  data.sprites.front_shiny,
+            catchRate:    100,
+            evolvesTo:    null,
+            ability:      data.abilities?.[0]?.ability?.name || null,
         };
         try {
             const specRes = await fetch(`${POKEDEX_URL}/pokemon-species/${key}`);
             if (specRes.ok) {
                 const specData   = await specRes.json();
                 parsed.catchRate = specData.capture_rate;
+                const evoUrl = specData.evolution_chain?.url;
+                if (evoUrl) {
+                    const evoRes = await fetch(evoUrl);
+                    if (evoRes.ok) {
+                        const evoData = await evoRes.json();
+                        const findEvo = (chain, targetName) => {
+                            if (chain.species.name === targetName) {
+                                for (const next of chain.evolves_to) {
+                                    const det = next.evolution_details[0];
+                                    if (det?.trigger?.name === 'level-up' && det?.min_level) {
+                                        return { name: next.species.name, minLevel: det.min_level };
+                                    }
+                                }
+                            }
+                            for (const next of chain.evolves_to) {
+                                const found = findEvo(next, targetName);
+                                if (found) return found;
+                            }
+                            return null;
+                        };
+                        parsed.evolvesTo = findEvo(evoData.chain, parsed.name);
+                    }
+                }
             }
-        } catch {}
-        botData.pokemonCache[key] = parsed;
-        markDirty(); scheduleSave();
-        return parsed;
-    } catch { return null; }
-}
+        } catch {}   
 
 // ── Fetch move data with cache ──
 async function fetchMove(moveName) {
@@ -1258,6 +1293,7 @@ async function fetchMove(moveName) {
             name:     data.name,
             power:    data.power || 0,
             accuracy: data.accuracy || 100,
+            pp:       data.pp || 10,
             type:     data.type.name,
             category: data.damage_class.name,
             effect:   data.effect_entries.find(e => e.language.name === 'en')?.short_effect || '',
@@ -1276,6 +1312,215 @@ function rollShiny() {
 // ── Format name nicely ──
 function formatPokeName(name) {
     return name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+// ============================================================
+//  PP HELPERS
+// ============================================================
+async function getPP(pkm, moveName) {
+    if (!pkm.pp) pkm.pp = {};
+    if (pkm.pp[moveName] !== undefined) return pkm.pp[moveName];
+    const data = await fetchMove(moveName);
+    const max  = data?.pp || 10;
+    pkm.pp[moveName] = max;
+    return max;
+}
+
+async function usePP(pkm, moveName) {
+    if (!pkm.pp) pkm.pp = {};
+    if (pkm.pp[moveName] === undefined) {
+        const data = await fetchMove(moveName);
+        pkm.pp[moveName] = data?.pp || 10;
+    }
+    if (pkm.pp[moveName] <= 0) return false;
+    pkm.pp[moveName]--;
+    return true;
+}
+
+async function restoreAllPP(pkm) {
+    if (!pkm.pp) pkm.pp = {};
+    for (const move of (pkm.moves || [])) {
+        const data = await fetchMove(move);
+        pkm.pp[move] = data?.pp || 10;
+    }
+}
+
+// ============================================================
+//  EVOLUTION SYSTEM
+// ============================================================
+async function checkAndTriggerEvolution(pkm, channel, userId) {
+    if (!pkm.evolvesTo) return false;
+    const { name: evoName, minLevel } = pkm.evolvesTo;
+    if (pkm.level < minLevel) return false;
+
+    const evoData = await fetchPokemon(evoName);
+    if (!evoData) return false;
+
+    const evoEmbed = new EmbedBuilder()
+        .setColor(0xFFD700)
+        .setTitle('✨ Your Pokémon is evolving!')
+        .setDescription(
+            `**${formatPokeName(pkm.name)}** is evolving into **${formatPokeName(evoName)}**!\n\n` +
+            `React ✅ to **evolve** or ❌ to **cancel** *(60 seconds)*`
+        )
+        .setThumbnail(evoData.sprite)
+        .setFooter({ text: 'SOLDIER² Pokémon Evolution' })
+        .setTimestamp();
+
+    const evoMsg = await channel.send({ content: `<@${userId}>`, embeds: [evoEmbed] }).catch(() => null);
+    if (!evoMsg) return false;
+
+    await evoMsg.react('✅').catch(() => {});
+    await evoMsg.react('❌').catch(() => {});
+
+    return new Promise(resolve => {
+        const filter    = (r, u) => u.id === userId && ['✅','❌'].includes(r.emoji.name);
+        const collector = evoMsg.createReactionCollector({ filter, max: 1, time: 60000 });
+
+        collector.on('collect', async (reaction) => {
+            if (reaction.emoji.name === '✅') {
+                const oldName   = pkm.name;
+                pkm.name        = evoData.name;
+                pkm.types       = evoData.types;
+                pkm.stats       = evoData.stats;
+                pkm.sprite      = pkm.shiny ? evoData.spriteShiny : evoData.sprite;
+                pkm.spriteShiny = evoData.spriteShiny;
+                pkm.evolvesTo   = evoData.evolvesTo || null;
+                pkm.ability     = evoData.ability   || pkm.ability;
+                pkm.id          = evoData.id;
+                pkm.pp          = {};
+                markDirty(); scheduleSave();
+                await evoMsg.edit({ embeds: [new EmbedBuilder()
+                    .setColor(0xFFD700)
+                    .setTitle(`🎉 ${formatPokeName(oldName)} evolved into ${formatPokeName(evoData.name)}!`)
+                    .setDescription(`<@${userId}>'s **${formatPokeName(oldName)}** is now **${formatPokeName(evoData.name)}**!`)
+                    .setImage(pkm.shiny ? evoData.spriteShiny : evoData.sprite)
+                    .setFooter({ text: 'SOLDIER² Pokémon Evolution' })
+                    .setTimestamp()
+                ]}).catch(() => {});
+                resolve(true);
+            } else {
+                await evoMsg.edit({ embeds: [new EmbedBuilder()
+                    .setColor(0x95A5A6)
+                    .setTitle(`❌ Evolution cancelled`)
+                    .setDescription(`**${formatPokeName(pkm.name)}** did not evolve.`)
+                    .setFooter({ text: 'SOLDIER² Pokémon Evolution' })
+                ]}).catch(() => {});
+                resolve(false);
+            }
+        });
+        collector.on('end', (c) => {
+            if (!c.size) {
+                evoMsg.edit({ embeds: [new EmbedBuilder()
+                    .setColor(0x95A5A6)
+                    .setTitle('⏰ Evolution timed out')
+                    .setDescription(`**${formatPokeName(pkm.name)}** did not evolve.`)
+                    .setFooter({ text: 'SOLDIER² Pokémon Evolution' })
+                ]}).catch(() => {});
+                resolve(false);
+            }
+        });
+    });
+}
+
+// ============================================================
+//  MOVE LEARN CHECK — called after level up
+// ============================================================
+async function checkNewMoves(pkm, newLevel, channel, userId) {
+    const data = await fetchPokemon(pkm.name);
+    if (!data?.levelUpMoves) return;
+
+    const toLearn = data.levelUpMoves.filter(m => m.level === newLevel);
+    for (const moveEntry of toLearn) {
+        const moveName = moveEntry.name;
+        if (pkm.moves.includes(moveName)) continue;
+
+        const moveData = await fetchMove(moveName);
+        if (!moveData) continue;
+
+        const typeColors = {
+            fire: 0xEE8130, water: 0x6390F0, grass: 0x7AC74C, electric: 0xF7D02C,
+            psychic: 0xF95587, ice: 0x96D9D6, dragon: 0x6F35FC, dark: 0x705746,
+            fairy: 0xD685AD, normal: 0xA8A77A, fighting: 0xC22E28, poison: 0xA33EA1,
+            ground: 0xE2BF65, rock: 0xB6A136, bug: 0xA6B91A, ghost: 0x735797,
+            steel: 0xB7B7CE, flying: 0xA98FF3,
+        };
+
+        const hasFull   = pkm.moves.length >= 4;
+        const learnEmbed = new EmbedBuilder()
+            .setColor(typeColors[moveData.type] || 0xFF6900)
+            .setTitle(`📖 ${formatPokeName(pkm.name)} wants to learn ${formatPokeName(moveName)}!`)
+            .setDescription(
+                `**New move:** ${formatPokeName(moveName)}\n` +
+                `Type: ${formatPokeName(moveData.type)} | Power: ${moveData.power || '—'} | Acc: ${moveData.accuracy || '—'}% | PP: ${moveData.pp || 10}\n\n` +
+                (hasFull
+                    ? `React ✅ to learn it and choose which move to replace, or ❌ to skip.\n\n` +
+                      `**Current moves:**\n` +
+                      pkm.moves.map((m, i) => `${['1️⃣','2️⃣','3️⃣','4️⃣'][i]} ${formatPokeName(m)}`).join('\n')
+                    : `React ✅ to **learn** or ❌ to **skip**.`)
+            )
+            .setFooter({ text: 'SOLDIER² Pokémon • 60 seconds to decide' });
+
+        const learnMsg = await channel.send({ content: `<@${userId}>`, embeds: [learnEmbed] }).catch(() => null);
+        if (!learnMsg) continue;
+
+        await learnMsg.react('✅').catch(() => {});
+        await learnMsg.react('❌').catch(() => {});
+
+        await new Promise(resolve => {
+            const f1 = (r, u) => u.id === userId && ['✅','❌'].includes(r.emoji.name);
+            const c1 = learnMsg.createReactionCollector({ filter: f1, max: 1, time: 60000 });
+
+            c1.on('collect', async (r) => {
+                if (r.emoji.name === '❌') {
+                    await learnMsg.edit({ embeds: [new EmbedBuilder()
+                        .setColor(0x95A5A6)
+                        .setTitle(`❌ ${formatPokeName(pkm.name)} did not learn ${formatPokeName(moveName)}.`)
+                        .setFooter({ text: 'SOLDIER² Pokémon' })
+                    ]}).catch(() => {});
+                    return resolve();
+                }
+
+                if (!hasFull) {
+                    pkm.moves.push(moveName);
+                    if (!pkm.pp) pkm.pp = {};
+                    pkm.pp[moveName] = moveData.pp || 10;
+                    markDirty(); scheduleSave();
+                    await learnMsg.edit({ embeds: [new EmbedBuilder()
+                        .setColor(0x24c718)
+                        .setTitle(`✅ ${formatPokeName(pkm.name)} learned ${formatPokeName(moveName)}!`)
+                        .setFooter({ text: 'SOLDIER² Pokémon' })
+                    ]}).catch(() => {});
+                    return resolve();
+                }
+
+                // Full moveset — pick slot to replace
+                await learnMsg.reactions.removeAll().catch(() => {});
+                for (const e of ['1️⃣','2️⃣','3️⃣','4️⃣']) await learnMsg.react(e).catch(() => {});
+
+                const slotEmojis = ['1️⃣','2️⃣','3️⃣','4️⃣'];
+                const f2 = (r2, u2) => u2.id === userId && slotEmojis.includes(r2.emoji.name);
+                const c2 = learnMsg.createReactionCollector({ filter: f2, max: 1, time: 60000 });
+
+                c2.on('collect', async (r2) => {
+                    const slotIdx      = slotEmojis.indexOf(r2.emoji.name);
+                    const oldMove      = pkm.moves[slotIdx];
+                    pkm.moves[slotIdx] = moveName;
+                    if (!pkm.pp) pkm.pp = {};
+                    delete pkm.pp[oldMove];
+                    pkm.pp[moveName] = moveData.pp || 10;
+                    markDirty(); scheduleSave();
+                    await learnMsg.edit({ embeds: [new EmbedBuilder()
+                        .setColor(0x24c718)
+                        .setTitle(`✅ ${formatPokeName(pkm.name)} forgot ${formatPokeName(oldMove)} and learned ${formatPokeName(moveName)}!`)
+                        .setFooter({ text: 'SOLDIER² Pokémon' })
+                    ]}).catch(() => {});
+                    resolve();
+                });
+                c2.on('end', (c) => { if (!c.size) resolve(); });
+            });
+            c1.on('end', (c) => { if (!c.size) resolve(); });
+        });
+    }
 }
 
 // ── Get user Pokémon data ──
@@ -1296,17 +1541,27 @@ function getUserPokemon(userId) {
 
 // ── Build a new Pokémon entry ──
 function buildPokemonEntry(data, shiny = false, level = 5) {
+    const startMoves = (data.levelUpMoves || [])
+        .filter(m => m.level <= level)
+        .slice(-4)
+        .map(m => m.name);
+    const movesToUse = startMoves.length > 0 ? startMoves : data.moves.slice(0, 4);
+
     return {
-        uid:    `${data.id}_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-        id:     data.id,
-        name:   data.name,
+        uid:        `${data.id}_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+        id:         data.id,
+        name:       data.name,
         shiny,
         level,
-        xp:     0,
-        moves:  data.moves.slice(0, 4),
-        types:  data.types,
-        stats:  data.stats,
-        sprite: shiny ? data.spriteShiny : data.sprite,
+        xp:         0,
+        moves:      movesToUse,
+        pp:         {},
+        types:      data.types,
+        stats:      data.stats,
+        ability:    data.ability || null,
+        evolvesTo:  data.evolvesTo || null,
+        sprite:     shiny ? data.spriteShiny : data.sprite,
+        spriteShiny: data.spriteShiny || null,
     };
 }
 
@@ -2175,8 +2430,21 @@ async function executeTurn(battleId, channel) {
             continue;
         }
 
-        turnLog.push(`**${formatPokeName(attacker.pokemon.name)}** used **${formatPokeName(moveData.name)}**!`);
+        // ── PP check ──
+        const ppOk = await usePP(attacker.pokemon, moveName);
+        if (!ppOk) {
+            // Struggle — no PP left
+            turnLog.push(`**${formatPokeName(attacker.pokemon.name)}** has no PP left and used **Struggle**!`);
+            const struggleDmg = Math.max(1, Math.floor(defender.maxHp / 4));
+            const recoilDmg   = Math.max(1, Math.floor(attacker.maxHp / 4));
+            defender.currentHp = Math.max(0, defender.currentHp - struggleDmg);
+            attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
+            turnLog.push(`💥 **${formatPokeName(defender.pokemon.name)}** took **${struggleDmg}** damage!`);
+            turnLog.push(`💢 **${formatPokeName(attacker.pokemon.name)}** took **${recoilDmg}** recoil damage!`);
+            continue;
+        }
 
+        turnLog.push(`**${formatPokeName(attacker.pokemon.name)}** used **${formatPokeName(moveData.name)}**!`);
         const result = calculateDamage(attacker, defender, moveData);
 
         if (result.failed) {
@@ -5635,6 +5903,56 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
     //  POKÉMON SYSTEM — ALL COMMANDS
     // =========================================================
 // ──────────────────────────────────────────
+    // ×moves <party slot>
+    // ──────────────────────────────────────────
+    if (command === 'moves') {
+        const ud   = getUserPokemon(uid);
+        const slot = parseInt(args[0]) - 1;
+
+        if (isNaN(slot) || slot < 0 || slot >= ud.party.length) {
+            return reply(`❌ Usage: \`×moves <party slot>\` — slot 1 to ${ud.party.length}`);
+        }
+
+        const pkm = ud.collection[ud.party[slot]];
+        if (!pkm) return reply('❌ No Pokémon in that slot.');
+
+        const typeColors = {
+            fire: 0xEE8130, water: 0x6390F0, grass: 0x7AC74C, electric: 0xF7D02C,
+            psychic: 0xF95587, ice: 0x96D9D6, dragon: 0x6F35FC, dark: 0x705746,
+            fairy: 0xD685AD, normal: 0xA8A77A, fighting: 0xC22E28, poison: 0xA33EA1,
+            ground: 0xE2BF65, rock: 0xB6A136, bug: 0xA6B91A, ghost: 0x735797,
+            steel: 0xB7B7CE, flying: 0xA98FF3,
+        };
+
+        const moveFields = [];
+        for (const moveName of pkm.moves) {
+            const md      = await fetchMove(moveName);
+            const current = pkm.pp?.[moveName] ?? (md?.pp || 10);
+            const max     = md?.pp || 10;
+            const bar     = '█'.repeat(Math.round((current / max) * 8)) + '░'.repeat(8 - Math.round((current / max) * 8));
+
+            moveFields.push({
+                name:   `${formatPokeName(moveName)}`,
+                value:  md
+                    ? `Type: **${formatPokeName(md.type)}** | Cat: **${md.category}** | Power: **${md.power || '—'}** | Acc: **${md.accuracy || '—'}%**\nPP: \`${bar}\` ${current}/${max}`
+                    : `PP: ${current}/${max}`,
+                inline: false,
+            });
+        }
+
+        const embed = new EmbedBuilder()
+            .setColor(typeColors[pkm.types[0]] || 0xFF6900)
+            .setTitle(`⚔️ ${pkm.shiny ? '✨ ' : ''}${formatPokeName(pkm.name)} — Move List`)
+            .setDescription(`Level **${pkm.level}** | Type: **${pkm.types.map(t => formatPokeName(t)).join(' / ')}**`)
+            .addFields(moveFields)
+            .setThumbnail(pkm.sprite)
+            .setFooter({ text: 'SOLDIER² Pokémon • PP restores after battles' })
+            .setTimestamp();
+
+        await message.channel.send({ embeds: [embed] });
+        return;
+    }
+    // ──────────────────────────────────────────
     // ×pokestore [category] [page]
     // ──────────────────────────────────────────
     if (command === 'pokestore') {
