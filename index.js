@@ -2012,14 +2012,67 @@ async function generateBattleImage(battle) {
     const canvas = createCanvas(W, H);
     const ctx    = canvas.getContext('2d');
 
-    // ── Background ──
+    // ── Background — changes with weather ──
+    const weather   = battle.weather || null;
+    const wInfo     = weather ? WEATHER_INFO[weather] : null;
     const bg = ctx.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0,   '#1a1a2e');
-    bg.addColorStop(0.5, '#16213e');
-    bg.addColorStop(1,   '#0f3460');
+    bg.addColorStop(0,   wInfo ? wInfo.bgTop : '#1a1a2e');
+    bg.addColorStop(0.5, wInfo ? wInfo.bgTop : '#16213e');
+    bg.addColorStop(1,   wInfo ? wInfo.bgBot : '#0f3460');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
+    // ── Weather overlay particles ──
+    if (weather === 'rain') {
+        ctx.strokeStyle = 'rgba(100,160,255,0.25)';
+        ctx.lineWidth   = 1;
+        for (let i = 0; i < 40; i++) {
+            const rx = Math.random() * W;
+            const ry = Math.random() * H;
+            ctx.beginPath();
+            ctx.moveTo(rx, ry);
+            ctx.lineTo(rx - 4, ry + 12);
+            ctx.stroke();
+        }
+    }
+    if (weather === 'sandstorm') {
+        ctx.fillStyle = 'rgba(200,160,80,0.15)';
+        ctx.fillRect(0, 0, W, H);
+        for (let i = 0; i < 30; i++) {
+            ctx.fillStyle = `rgba(200,160,80,${Math.random() * 0.2})`;
+            ctx.beginPath();
+            ctx.ellipse(Math.random()*W, Math.random()*H, Math.random()*20+5, 3, Math.random()*Math.PI, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+    if (weather === 'hail' || weather === 'snow') {
+        for (let i = 0; i < 35; i++) {
+            ctx.fillStyle = `rgba(200,230,255,${Math.random() * 0.4 + 0.1})`;
+            ctx.beginPath();
+            ctx.arc(Math.random()*W, Math.random()*H, Math.random()*3+1, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+    if (weather === 'sun') {
+        const sunGlow = ctx.createRadialGradient(W*0.5, -20, 10, W*0.5, -20, 250);
+        sunGlow.addColorStop(0, 'rgba(255,200,50,0.35)');
+        sunGlow.addColorStop(1, 'rgba(255,150,0,0)');
+        ctx.fillStyle = sunGlow;
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    // ── Weather label ──
+    if (wInfo) {
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath();
+        ctx.roundRect(W/2 - 80, 5, 160, 24, 6);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font      = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(wInfo.label, W/2, 22);
+        ctx.textAlign = 'left';
+    }
     // ── Ground line ──
     ctx.strokeStyle = '#e94560';
     ctx.lineWidth   = 2;
@@ -2300,7 +2353,7 @@ function buildBattleEmbed(battle, turnLog = [], imageAttachment = null) {
 
     const embed = new EmbedBuilder()
         .setColor(0xFF6900)
-        .setTitle('⚔️ Pokémon Battle!')
+        .setTitle(`⚔️ Pokémon Battle!${battle.weather ? '  ' + (WEATHER_INFO[battle.weather]?.label || '') : ''}`)
         .addFields(
             {
                 name:  `${isBot ? '🤖 BOT' : `<@${p2.userId}>`} — ${p2.shiny ? '✨ ' : ''}${formatPokeName(p2.pokemon.name)} Lv.${p2.pokemon.level}`,
@@ -2349,7 +2402,7 @@ function buildBattleEmbed(battle, turnLog = [], imageAttachment = null) {
  if (p2.pokemon.sprite) embed.setImage(p2.pokemon.sprite);
     if (p1.pokemon.sprite) embed.setThumbnail(p1.pokemon.sprite);
     if (imageAttachment) embed.setImage('attachment://battle.png');
-    embed.setFooter({ text: 'SOLDIER² Pokémon Battle' }).setTimestamp();
+    embed.setFooter({ text: 'SOLDIER³ Pokémon Battle' }).setTimestamp();
     return embed;
 }
 
@@ -2359,6 +2412,140 @@ async function getBotMove(botFighter) {
 
 function generateBattleId() {
     return `battle_${Date.now()}_${Math.floor(Math.random() * 9999)}`;
+}
+// ============================================================
+//  WEATHER & ABILITY SYSTEM
+// ============================================================
+const WEATHER_MOVES = {
+    'sunny-day':    'sun',
+    'rain-dance':   'rain',
+    'sandstorm':    'sandstorm',
+    'hail':         'hail',
+    'snowscape':    'snow',
+};
+
+const WEATHER_INFO = {
+    sun:       { label: '☀️ Harsh Sunlight', color: '#FF8C00', bgTop: '#FF6B00', bgBot: '#FFD700' },
+    rain:      { label: '🌧️ Heavy Rain',     color: '#4488FF', bgTop: '#1a3a6e', bgBot: '#0a1f4e' },
+    sandstorm: { label: '🌪️ Sandstorm',      color: '#C8A050', bgTop: '#6B4C1E', bgBot: '#3D2B0A' },
+    hail:      { label: '❄️ Hail',           color: '#88CCFF', bgTop: '#1a2a4e', bgBot: '#0a1530' },
+    snow:      { label: '❄️ Snow',           color: '#AADDFF', bgTop: '#1e2e5e', bgBot: '#0f1a3a' },
+};
+
+const ABILITY_EFFECTS = {
+    // Speed/priority
+    'swift-swim':      { trigger: 'weather', weather: 'rain',      stat: 'speed',   mult: 2   },
+    'chlorophyll':     { trigger: 'weather', weather: 'sun',       stat: 'speed',   mult: 2   },
+    'sand-rush':       { trigger: 'weather', weather: 'sandstorm', stat: 'speed',   mult: 2   },
+    'slush-rush':      { trigger: 'weather', weather: 'hail',      stat: 'speed',   mult: 2   },
+    // Attack boosts
+    'blaze':           { trigger: 'low-hp',  type: 'fire',    mult: 1.5 },
+    'torrent':         { trigger: 'low-hp',  type: 'water',   mult: 1.5 },
+    'overgrow':        { trigger: 'low-hp',  type: 'grass',   mult: 1.5 },
+    'swarm':           { trigger: 'low-hp',  type: 'bug',     mult: 1.5 },
+    // Weather damage immunity
+    'sand-veil':       { trigger: 'weather', weather: 'sandstorm', immune: true },
+    'ice-body':        { trigger: 'weather', weather: 'hail',      heal: true   },
+    'rain-dish':       { trigger: 'weather', weather: 'rain',      heal: true   },
+    'dry-skin':        { trigger: 'weather', weather: 'rain',      heal: true   },
+    'solar-power':     { trigger: 'weather', weather: 'sun',       spatkBoost: 1.5 },
+    // Type immunities
+    'levitate':        { trigger: 'immune',  type: 'ground' },
+    'flash-fire':      { trigger: 'immune',  type: 'fire',  boostOnHit: true },
+    'volt-absorb':     { trigger: 'immune',  type: 'electric', healOnHit: true },
+    'water-absorb':    { trigger: 'immune',  type: 'water',    healOnHit: true },
+    'wonder-guard':    { trigger: 'superonly' },
+    // Stat on entry
+    'intimidate':      { trigger: 'entry',   stat: 'attack', mult: 0.75 },
+    // Status immunity
+    'immunity':        { trigger: 'status-immune', statuses: ['poison'] },
+    'insomnia':        { trigger: 'status-immune', statuses: ['sleep']  },
+    'vital-spirit':    { trigger: 'status-immune', statuses: ['sleep']  },
+    'own-tempo':       { trigger: 'status-immune', statuses: ['confusion'] },
+    'oblivious':       { trigger: 'status-immune', statuses: ['confusion'] },
+    'magma-armor':     { trigger: 'status-immune', statuses: ['freeze'] },
+    'water-veil':      { trigger: 'status-immune', statuses: ['burn']   },
+    // Misc
+    'static':          { trigger: 'contact', status: 'paralysis', chance: 0.3 },
+    'flame-body':      { trigger: 'contact', status: 'burn',      chance: 0.3 },
+    'poison-point':    { trigger: 'contact', status: 'poison',    chance: 0.3 },
+    'rough-skin':      { trigger: 'contact', recoil: 0.0625 },
+    'iron-barbs':      { trigger: 'contact', recoil: 0.0625 },
+    'speed-boost':     { trigger: 'end-of-turn', stat: 'speed', increment: 10 },
+    'shed-skin':       { trigger: 'end-of-turn', clearStatus: true, chance: 0.33 },
+};
+
+function applyAbilityOnEntry(fighter, opponent, turnLog) {
+    const ability = fighter.pokemon.ability;
+    if (!ability) return;
+    const eff = ABILITY_EFFECTS[ability];
+    if (!eff || eff.trigger !== 'entry') return;
+    if (eff.stat === 'attack') {
+        opponent.atkMod = (opponent.atkMod || 1) * eff.mult;
+        turnLog.push(`💪 **${formatPokeName(opponent.pokemon.name)}**'s Attack was lowered by **${formatPokeName(ability)}**!`);
+    }
+}
+
+function checkAbilityImmunity(defenderFighter, moveType) {
+    const ability = defenderFighter.pokemon.ability;
+    if (!ability) return false;
+    const eff = ABILITY_EFFECTS[ability];
+    if (!eff) return false;
+    if (eff.trigger === 'immune' && eff.type === moveType) return true;
+    if (eff.trigger === 'superonly') return false; // handled in damage calc
+    return false;
+}
+
+function applyWeatherEndOfTurn(battle, turnLog) {
+    if (!battle.weather || battle.weatherTurns <= 0) {
+        if (battle.weather) {
+            turnLog.push(`☁️ The weather cleared up.`);
+            battle.weather      = null;
+            battle.weatherTurns = 0;
+        }
+        return;
+    }
+    battle.weatherTurns--;
+
+    const w = battle.weather;
+    for (const side of ['player1', 'player2']) {
+        const fighter = battle[side];
+        const ability  = fighter.pokemon.ability;
+        const eff      = ABILITY_EFFECTS[ability] || {};
+
+        if (w === 'sandstorm') {
+            const types = fighter.pokemon.types;
+            if (!types.some(t => ['rock','steel','ground'].includes(t)) &&
+                eff.trigger !== 'weather' && !eff.immune) {
+                const dmg = Math.max(1, Math.floor(fighter.maxHp / 16));
+                fighter.currentHp = Math.max(0, fighter.currentHp - dmg);
+                turnLog.push(`🌪️ **${formatPokeName(fighter.pokemon.name)}** is buffeted by the sandstorm! (-${dmg} HP)`);
+            }
+        }
+        if (w === 'hail' || w === 'snow') {
+            const types = fighter.pokemon.types;
+            if (!types.includes('ice') && eff.trigger !== 'weather') {
+                const dmg = Math.max(1, Math.floor(fighter.maxHp / 16));
+                fighter.currentHp = Math.max(0, fighter.currentHp - dmg);
+                turnLog.push(`❄️ **${formatPokeName(fighter.pokemon.name)}** is buffeted by hail! (-${dmg} HP)`);
+            }
+        }
+        if ((w === 'rain' && (ability === 'rain-dish' || ability === 'dry-skin')) ||
+            (w === 'hail' && ability === 'ice-body')) {
+            const heal = Math.max(1, Math.floor(fighter.maxHp / 16));
+            fighter.currentHp = Math.min(fighter.maxHp, fighter.currentHp + heal);
+            turnLog.push(`💧 **${formatPokeName(fighter.pokemon.name)}** restored HP from the weather! (+${heal} HP)`);
+        }
+    }
+}
+
+function getWeatherMoveMult(weather, moveType) {
+    if (!weather) return 1;
+    if (weather === 'sun'  && moveType === 'fire')  return 1.5;
+    if (weather === 'sun'  && moveType === 'water') return 0.5;
+    if (weather === 'rain' && moveType === 'water') return 1.5;
+    if (weather === 'rain' && moveType === 'fire')  return 0.5;
+    return 1;
 }
 
 const battleMoveTimers = {};
@@ -2425,9 +2612,54 @@ async function executeTurn(battleId, channel) {
 
         const moveData = await fetchMove(moveName);
         if (!moveData) {
-            turnLog.push(`**${formatPokeName(attacker.pokemon.name)}** used **${formatPokeName(moveName)}**!`);
-            turnLog.push('*(Move data unavailable)*');
+            // ── Weather move check ──
+        if (WEATHER_MOVES[moveData.name]) {
+            const newWeather = WEATHER_MOVES[moveData.name];
+            battle.weather      = newWeather;
+            battle.weatherTurns = 5;
+            const wLabel = WEATHER_INFO[newWeather]?.label || newWeather;
+            turnLog.push(`**${formatPokeName(attacker.pokemon.name)}** used **${formatPokeName(moveData.name)}**!`);
+            turnLog.push(`🌤️ ${wLabel} started!`);
             continue;
+        }
+
+        // ── Ability immunity check ──
+        if (checkAbilityImmunity(defender, moveData.type)) {
+            turnLog.push(`**${formatPokeName(attacker.pokemon.name)}** used **${formatPokeName(moveData.name)}**!`);
+            turnLog.push(`🛡️ **${formatPokeName(defender.pokemon.name)}**'s **${formatPokeName(defender.pokemon.ability)}** made it immune!`);
+            // Flash Fire etc — boost on immunity
+            const eff = ABILITY_EFFECTS[defender.pokemon.ability];
+            if (eff?.boostOnHit) defender.atkBoost = (defender.atkBoost || 1) * 1.5;
+            if (eff?.healOnHit) {
+                const heal = Math.max(1, Math.floor(defender.maxHp / 4));
+                defender.currentHp = Math.min(defender.maxHp, defender.currentHp + heal);
+                turnLog.push(`💚 **${formatPokeName(defender.pokemon.name)}** restored **${heal} HP**!`);
+            }
+            continue;
+        }
+
+        turnLog.push(`**${formatPokeName(attacker.pokemon.name)}** used **${formatPokeName(moveData.name)}**!`);
+
+        // ── Weather damage multiplier ──
+        const weatherMult = getWeatherMoveMult(battle.weather, moveData.type);
+        const moveDataWithWeather = weatherMult !== 1
+            ? { ...moveData, power: Math.floor((moveData.power || 0) * weatherMult) }
+            : moveData;
+
+        // ── Ability attack boosts (Blaze/Torrent/Overgrow) ──
+        const abilityEff = ABILITY_EFFECTS[attacker.pokemon.ability];
+        let abilityMult  = 1;
+        if (abilityEff?.trigger === 'low-hp' && abilityEff.type === moveData.type) {
+            if (attacker.currentHp <= attacker.maxHp / 3) abilityMult = abilityEff.mult;
+        }
+        if (abilityEff?.trigger === 'weather' && abilityEff.weather === battle.weather && abilityEff.spatkBoost) {
+            abilityMult = abilityEff.spatkBoost;
+        }
+        const finalMoveData = abilityMult !== 1
+            ? { ...moveDataWithWeather, power: Math.floor((moveDataWithWeather.power || 0) * abilityMult) }
+            : moveDataWithWeather;
+
+        const result = calculateDamage(attacker, defender, finalMoveData);
         }
 
         // ── PP check ──
@@ -2470,6 +2702,8 @@ async function executeTurn(battleId, channel) {
             break;
         }
     }
+    // ── Weather end of turn ──
+    applyWeatherEndOfTurn(battle, turnLog);
 
     battle.turnNumber++;
 
@@ -6583,14 +6817,16 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
             const battleId  = generateBattleId();
 
             const battle = {
-                type:       'pve',
-                guildId:    gid,
-                channelId:  message.channel.id,
-                turnNumber: 1,
-                phase:      'selecting',
-                p1Move:     null,
-                p2Move:     null,
+                type:         'pve',
+                guildId:      gid,
+                channelId:    message.channel.id,
+                turnNumber:   1,
+                phase:        'selecting',
+                p1Move:       null,
+                p2Move:       null,
                 switchPending: null,
+                weather:      null,
+                weatherTurns: 0,
                 player1: {
                     userId:        uid,
                     pokemon:       playerPkm,
@@ -6599,6 +6835,8 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
                     statusEffect:  null,
                     sleepTurns:    0,
                     confusionTurns: 0,
+                    atkMod:        1,
+                    atkBoost:      1,
                 },
                 player2: {
                     userId:        'BOT',
@@ -6608,6 +6846,8 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
                     statusEffect:  null,
                     sleepTurns:    0,
                     confusionTurns: 0,
+                    atkMod:        1,
+                    atkBoost:      1,
                 },
                 battleMsgId: null,
             };
@@ -6688,34 +6928,40 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
                 }
 
                 const battle = {
-                    type:       'pvp',
-                    guildId:    gid,
-                    channelId:  message.channel.id,
-                    turnNumber: 1,
-                    phase:      'selecting',
-                    p1Move:     null,
-                    p2Move:     null,
-                    switchPending: null,
-                    player1: {
-                        userId:        uid,
-                        pokemon:       playerPkm,
-                        currentHp:     playerPkm.stats.hp,
-                        maxHp:         playerPkm.stats.hp,
-                        statusEffect:  null,
-                        sleepTurns:    0,
-                        confusionTurns: 0,
-                    },
-                    player2: {
-                        userId:        opponent.id,
-                        pokemon:       opponentPkm,
-                        currentHp:     opponentPkm.stats.hp,
-                        maxHp:         opponentPkm.stats.hp,
-                        statusEffect:  null,
-                        sleepTurns:    0,
-                        confusionTurns: 0,
-                    },
-                    battleMsgId: null,
-                };
+                type:         'pve',
+                guildId:      gid,
+                channelId:    message.channel.id,
+                turnNumber:   1,
+                phase:        'selecting',
+                p1Move:       null,
+                p2Move:       null,
+                switchPending: null,
+                weather:      null,
+                weatherTurns: 0,
+                player1: {
+                    userId:        uid,
+                    pokemon:       playerPkm,
+                    currentHp:     playerPkm.stats.hp,
+                    maxHp:         playerPkm.stats.hp,
+                    statusEffect:  null,
+                    sleepTurns:    0,
+                    confusionTurns: 0,
+                    atkMod:        1,
+                    atkBoost:      1,
+                },
+                player2: {
+                    userId:        'BOT',
+                    pokemon:       wildPkm,
+                    currentHp:     wildPkm.stats.hp,
+                    maxHp:         wildPkm.stats.hp,
+                    statusEffect:  null,
+                    sleepTurns:    0,
+                    confusionTurns: 0,
+                    atkMod:        1,
+                    atkBoost:      1,
+                },
+                battleMsgId: null,
+            };
 
                 if (!botData.activeBattles) botData.activeBattles = {};
                 botData.activeBattles[battleId] = battle;
@@ -6751,6 +6997,286 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
         }
 
         return reply('❌ Usage: `×battle` or `×battle pve` or `×battle pvp @user`');
+    }
+
+    // ──────────────────────────────────────────
+    // ×switch <slot> — voluntarily switch pokemon mid-battle
+    // ──────────────────────────────────────────
+    if (command === 'switch') {
+        const battleEntry = Object.entries(botData.activeBattles || {})
+            .find(([, b]) => b.player1.userId === uid || b.player2.userId === uid);
+        if (!battleEntry) return reply('❌ You are not in an active battle.');
+
+        const [battleId, battle] = battleEntry;
+        if (battle.phase !== 'selecting') return reply('❌ You can only switch during move selection.');
+        if (battle.player1.userId !== uid) return reply('❌ Only the challenger can use `×switch` in PvP.');
+
+        const slotArg = parseInt(args[0]) - 1;
+        const ud      = getUserPokemon(uid);
+
+        if (isNaN(slotArg) || slotArg < 0 || slotArg >= ud.party.length)
+            return reply(`❌ Usage: \`×switch <party slot>\` — slots 1 to ${ud.party.length}`);
+
+        const chosen = ud.collection[ud.party[slotArg]];
+        if (!chosen) return reply('❌ No Pokémon in that slot.');
+        if (chosen.uid === battle.player1.pokemon.uid) return reply('❌ That Pokémon is already in battle.');
+        if (chosen.stats.hp <= 0 || battle.player1.currentHp <= 0) return reply('❌ That Pokémon has fainted.');
+
+        // Switching costs your turn — set move to null so no attack this turn
+        battle.player1.pokemon   = chosen;
+        battle.player1.currentHp = chosen.stats.hp;
+        battle.player1.maxHp     = chosen.stats.hp;
+        battle.player1.statusEffect  = null;
+        battle.player1.sleepTurns    = 0;
+        battle.player1.confusionTurns = 0;
+        battle.player1.atkMod        = 1;
+        battle.player1.atkBoost      = 1;
+
+        const switchLog = [`🔄 <@${uid}> switched to **${formatPokeName(chosen.name)}**!`];
+
+        // Apply Intimidate if bot has it
+        applyAbilityOnEntry(battle.player2, battle.player1, switchLog);
+
+        // If PvE, bot still attacks since player used turn to switch
+        if (battle.type === 'pve') {
+            battle.p1Move = null; // skip player attack
+            await executeTurn(battleId, message.channel);
+        } else {
+            // PvP — update embed and wait for both moves
+            const imgBuf  = await generateBattleImage(battle).catch(() => null);
+            const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: 'battle.png' }) : null;
+            const battleMsg = await message.channel.messages.fetch(battle.battleMsgId).catch(() => null);
+            if (battleMsg) {
+                await battleMsg.edit({
+                    embeds: [buildBattleEmbed(battle, switchLog, imgFile)],
+                    files:  imgFile ? [imgFile] : [],
+                }).catch(() => {});
+            }
+        }
+
+        markDirty(); scheduleSave();
+        return;
+    }
+
+    // ──────────────────────────────────────────
+    // ×trade @user <collection number>
+    // ──────────────────────────────────────────
+    if (command === 'trade') {
+        const target = message.mentions.users.first();
+        if (!target || target.bot || target.id === uid)
+            return reply('❌ Usage: `×trade @user <collection number>`');
+
+        const numArg = parseInt(args[1] ?? args[0]);
+        if (isNaN(numArg)) return reply('❌ Usage: `×trade @user <collection number>`');
+
+        const ud  = getUserPokemon(uid);
+        const idx = numArg - 1;
+        if (idx < 0 || idx >= ud.collection.length || !ud.collection[idx])
+            return reply(`❌ No Pokémon at position ${numArg}. Check \`×collection\`.`);
+
+        const pkm = ud.collection[idx];
+
+        const tradeEmbed = new EmbedBuilder()
+            .setColor(0xFF6900)
+            .setTitle('🔄 Trade Request!')
+            .setDescription(
+                `<@${uid}> wants to trade their **${pkm.shiny ? '✨ ' : ''}${formatPokeName(pkm.name)}** (Lv.${pkm.level}) with <@${target.id}>!\n\n` +
+                `<@${target.id}> — React ✅ to **accept** or ❌ to **decline** *(60 seconds)*`
+            )
+            .setThumbnail(pkm.sprite)
+            .addFields(
+                { name: '🔷 Type',  value: pkm.types.map(t => formatPokeName(t)).join(' / '), inline: true },
+                { name: '⭐ Level', value: `${pkm.level}`,                                    inline: true },
+                { name: '✨ Shiny', value: pkm.shiny ? 'YES 🌟' : 'No',                       inline: true },
+            )
+            .setFooter({ text: 'SOLDIER² Pokémon Trade' })
+            .setTimestamp();
+
+        const tradeMsg = await message.channel.send({ content: `<@${target.id}>`, embeds: [tradeEmbed] });
+        await tradeMsg.react('✅').catch(() => {});
+        await tradeMsg.react('❌').catch(() => {});
+
+        const filter    = (r, u) => u.id === target.id && ['✅','❌'].includes(r.emoji.name);
+        const collector = tradeMsg.createReactionCollector({ filter, max: 1, time: 60000 });
+
+        collector.on('collect', async (reaction) => {
+            if (reaction.emoji.name === '❌') {
+                await tradeMsg.edit({ embeds: [new EmbedBuilder()
+                    .setColor(0xE74C3C)
+                    .setTitle('❌ Trade Declined')
+                    .setDescription(`<@${target.id}> declined the trade.`)
+                    .setFooter({ text: 'SOLDIER² Pokémon Trade' })
+                ]}).catch(() => {});
+                return;
+            }
+
+            // Ask target what they want to offer
+            const targetUd = getUserPokemon(target.id);
+            if (!targetUd.collection.length)
+                return tradeMsg.edit({ embeds: [new EmbedBuilder()
+                    .setColor(0xE74C3C)
+                    .setTitle('❌ Trade Failed')
+                    .setDescription(`<@${target.id}> has no Pokémon to trade!`)
+                    .setFooter({ text: 'SOLDIER² Pokémon Trade' })
+                ]}).catch(() => {});
+
+            await tradeMsg.edit({ embeds: [new EmbedBuilder()
+                .setColor(0xFF6900)
+                .setTitle('🔄 Trade Accepted — Pick Your Pokémon')
+                .setDescription(
+                    `<@${target.id}> — reply with \`×tradeoffer <number>\` within 60 seconds to pick which Pokémon you offer.\n` +
+                    `Use \`×collection\` to see your Pokémon numbers.`
+                )
+                .setFooter({ text: 'SOLDIER² Pokémon Trade' })
+            ]}).catch(() => {});
+
+            // Wait for tradeoffer
+            const offerFilter  = m => m.author.id === target.id &&
+                m.content.toLowerCase().startsWith(`${prefix}tradeoffer`);
+            const offerCollect = message.channel.createMessageCollector({ filter: offerFilter, max: 1, time: 60000 });
+
+            offerCollect.on('collect', async (offerMsg) => {
+                const offerNum = parseInt(offerMsg.content.split(/\s+/)[1]);
+                if (isNaN(offerNum)) return;
+
+                const targetIdx = offerNum - 1;
+                if (targetIdx < 0 || targetIdx >= targetUd.collection.length || !targetUd.collection[targetIdx]) {
+                    return message.channel.send(`❌ <@${target.id}> — invalid Pokémon number.`);
+                }
+
+                const targetPkm = targetUd.collection[targetIdx];
+
+                // Confirm both sides
+                const confirmEmbed = new EmbedBuilder()
+                    .setColor(0xFF6900)
+                    .setTitle('🔄 Confirm Trade')
+                    .setDescription(
+                        `**${formatPokeName(pkm.name)}** (Lv.${pkm.level}) ↔️ **${formatPokeName(targetPkm.name)}** (Lv.${targetPkm.level})\n\n` +
+                        `<@${uid}> — React ✅ to confirm or ❌ to cancel.`
+                    )
+                    .setFooter({ text: 'SOLDIER² Pokémon Trade' });
+
+                const confirmMsg = await message.channel.send({ content: `<@${uid}>`, embeds: [confirmEmbed] });
+                await confirmMsg.react('✅').catch(() => {});
+                await confirmMsg.react('❌').catch(() => {});
+
+                const cf = (r, u) => u.id === uid && ['✅','❌'].includes(r.emoji.name);
+                const cc = confirmMsg.createReactionCollector({ filter: cf, max: 1, time: 60000 });
+
+                cc.on('collect', async (r) => {
+                    if (r.emoji.name === '❌') {
+                        await confirmMsg.edit({ embeds: [new EmbedBuilder()
+                            .setColor(0x95A5A6).setTitle('❌ Trade Cancelled')
+                            .setFooter({ text: 'SOLDIER² Pokémon Trade' })
+                        ]}).catch(() => {});
+                        return;
+                    }
+
+                    // Execute trade
+                    const senderPkmCopy = { ...pkm };
+                    const targetPkmCopy = { ...targetPkm };
+
+                    ud.collection[idx]            = targetPkmCopy;
+                    targetUd.collection[targetIdx] = senderPkmCopy;
+                    markDirty(); scheduleSave();
+
+                    await confirmMsg.edit({ embeds: [new EmbedBuilder()
+                        .setColor(0x24c718)
+                        .setTitle('✅ Trade Complete!')
+                        .setDescription(
+                            `<@${uid}> received **${formatPokeName(targetPkm.name)}**!\n` +
+                            `<@${target.id}> received **${formatPokeName(pkm.name)}**!`
+                        )
+                        .setFooter({ text: 'SOLDIER² Pokémon Trade' })
+                        .setTimestamp()
+                    ]}).catch(() => {});
+                });
+                cc.on('end', (c) => { if (!c.size) confirmMsg.edit({ embeds: [new EmbedBuilder().setColor(0x95A5A6).setTitle('⏰ Trade timed out').setFooter({ text: 'SOLDIER² Pokémon Trade' })] }).catch(() => {}); });
+            });
+            offerCollect.on('end', (c) => { if (!c.size) message.channel.send(`⏰ Trade offer timed out.`).catch(() => {}); });
+        });
+
+        collector.on('end', (c) => {
+            if (!c.size) tradeMsg.edit({ embeds: [new EmbedBuilder()
+                .setColor(0x95A5A6).setTitle('⏰ Trade Expired')
+                .setDescription(`<@${target.id}> did not respond in time.`)
+                .setFooter({ text: 'SOLDIER² Pokémon Trade' })
+            ]}).catch(() => {});
+        });
+        return;
+    }
+
+    // ──────────────────────────────────────────
+    // ×pokeleaderboard [catches/wins/shinies]
+    // ──────────────────────────────────────────
+    if (command === 'pokeleaderboard') {
+        const type    = args[0]?.toLowerCase() || 'catches';
+        const validLb = ['catches', 'wins', 'shinies', 'level'];
+        if (!validLb.includes(type))
+            return reply(`❌ Usage: \`×pokeleaderboard catches/wins/shinies/level\``);
+
+        const entries = [];
+        for (const [userId, data] of Object.entries(botData.pokemon || {})) {
+            if (!data.collection) continue;
+            let value = 0;
+            if (type === 'catches') value = data.collection.length;
+            if (type === 'wins')    value = data.battleStats?.wins || 0;
+            if (type === 'shinies') value = data.collection.filter(p => p?.shiny).length;
+            if (type === 'level')   value = Math.max(0, ...data.collection.map(p => p?.level || 0));
+            if (value > 0) entries.push({ userId, value });
+        }
+
+        entries.sort((a, b) => b.value - a.value);
+        const top = entries.slice(0, 10);
+
+        if (!top.length) return reply('❌ No data yet!');
+
+        const medals = ['🥇','🥈','🥉'];
+        const desc   = top.map((e, i) =>
+            `${medals[i] || `**${i+1}.**`} <@${e.userId}> — **${e.value.toLocaleString()}** ${
+                type === 'catches' ? 'caught' : type === 'wins' ? 'wins' : type === 'shinies' ? '✨ shinies' : 'highest lv.'
+            }`
+        ).join('\n');
+
+        const titles = { catches: '🏆 Most Pokémon Caught', wins: '⚔️ Most Battle Wins', shinies: '✨ Most Shinies', level: '⭐ Highest Level Pokémon' };
+
+        await message.channel.send({ embeds: [new EmbedBuilder()
+            .setColor(0xFFD700)
+            .setTitle(titles[type])
+            .setDescription(desc)
+            .setFooter({ text: 'SOLDIER² Pokémon Leaderboard' })
+            .setTimestamp()
+        ]});
+        return;
+    }
+
+    // ──────────────────────────────────────────
+    // ×dexcompletion [@user]
+    // ──────────────────────────────────────────
+    if (command === 'dexcompletion') {
+        const target  = message.mentions.users.first() || message.author;
+        const ud      = getUserPokemon(target.id);
+        const total   = 1025;
+        const caught  = new Set(ud.collection.map(p => p?.id)).size;
+        const shinies = ud.collection.filter(p => p?.shiny).length;
+        const pct     = Math.floor((caught / total) * 100);
+        const bar     = '█'.repeat(Math.floor(pct / 5)) + '░'.repeat(20 - Math.floor(pct / 5));
+
+        await message.channel.send({ embeds: [new EmbedBuilder()
+            .setColor(0xFF6900)
+            .setTitle(`📖 ${target.username}'s Pokédex Completion`)
+            .addFields(
+                { name: '📊 Progress',        value: `\`${bar}\` ${pct}%`,   inline: false },
+                { name: '✅ Species Caught',   value: `${caught} / ${total}`, inline: true  },
+                { name: '✨ Shinies',          value: `${shinies}`,            inline: true  },
+                { name: '📦 Total Collected',  value: `${ud.collection.length}`, inline: true },
+                { name: '⚔️ Battle Record',   value: `${ud.battleStats?.wins || 0}W / ${ud.battleStats?.losses || 0}L`, inline: true },
+            )
+            .setThumbnail(target.displayAvatarURL({ dynamic: true }))
+            .setFooter({ text: 'SOLDIER² Pokédex' })
+            .setTimestamp()
+        ]});
+        return;
     }
 
     // ──────────────────────────────────────────────────
@@ -6823,84 +7349,87 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
     }
 
     // ── END POKÉMON COMMANDS ───────────────────────────
-// --------------------------------------------------
-    // ×pokehelp — Pokémon system help
+
+// ×pokehelp — Pokémon system help
     // --------------------------------------------------
     if (command === 'pokehelp') {
         const embed1 = new EmbedBuilder()
             .setColor(0xFFD700)
-            .setTitle('🎮 SOLDIER² — Pokémon System (1/2)')
+            .setTitle('🎮 SOLDIER² — Pokémon System (1/3)')
             .setDescription(
-                `**━━━ POKÉDEX & INFO ━━━**\n` +
-                `• \`${prefix}pokedex <name/id>\` — Look up any Pokémon's stats, type, moves & catch rate\n` +
-                `• \`${prefix}inspect <number>\` — Full details on one of your own Pokémon\n\n` +
-                `**━━━ YOUR COLLECTION ━━━**\n` +
-                `• \`${prefix}collection [@user] [page]\` — View your full Pokémon collection\n` +
-                `• \`${prefix}release <number>\` — Permanently release a Pokémon from your collection\n\n` +
-                `**━━━ PARTY MANAGEMENT ━━━**\n` +
-                `• \`${prefix}party [@user]\` — View your current battle party (up to 6 Pokémon)\n` +
-                `• \`${prefix}pokeparty add <number>\` — Add a Pokémon to your party\n` +
-                `• \`${prefix}pokeparty remove <number>\` — Remove a Pokémon from your party\n` +
-                `• \`${prefix}pokeparty swap <slot1> <slot2>\` — Swap two Pokémon slots in your party\n\n` +
-                `**━━━ WILD POKÉMON ━━━**\n` +
-                `• Wild Pokémon spawn automatically every **15–45 minutes** in the spawn channel\n` +
-                `• React with ⚡ on a spawn to attempt a catch\n` +
-                `• Catch rate is calculated using the real **Gen 3 Fire Red formula**\n` +
-                `• Pokémon flee automatically after **10 minutes** if not caught\n` +
-                `• Shiny Pokémon can appear at **1 in 4096** odds ✨\n` +
-                `• Each user gets **one catch attempt** per spawn\n\n` +
-                `**━━━ BATTLES ━━━**\n` +
-                `• \`${prefix}battle\` or \`${prefix}battle pve\` — Fight a random wild Pokémon\n` +
-                `• \`${prefix}battle pvp @user\` — Challenge another trainer to a battle\n` +
-                `• \`${prefix}forfeit\` — Surrender your current battle\n` +
-                `• \`${prefix}battlestatus\` — Resend the current battle state if you lost it\n` +
-                `• React with 1️⃣ 2️⃣ 3️⃣ 4️⃣ to select your move each turn\n` +
-                `• You have **60 seconds** to pick a move or the battle auto-ends\n` +
-                `• If your Pokémon faints, choose your next one by reacting\n` +
-                `• Turn order is determined by each Pokémon's **Speed** stat`
+                `**━━━ CATCHING ━━━**\n` +
+                `• Wild Pokémon spawn every **15–45 min** in the spawn channel\n` +
+                `• Use \`${prefix}catch <ball>\` to throw a Pokéball\n` +
+                `• Buy balls at \`${prefix}pokestore\` — different balls have different catch rates\n` +
+                `• Shiny Pokémon appear at **1/4096** odds ✨\n\n` +
+                `**━━━ STORE & BAG ━━━**\n` +
+                `• \`${prefix}pokestore [pokeballs/healing/berries]\` — Browse the Pokémart\n` +
+                `• \`${prefix}buy <item> [qty]\` — Purchase items\n` +
+                `• \`${prefix}bag [pokeballs/healing/berries]\` — View your items\n\n` +
+                `**━━━ COLLECTION ━━━**\n` +
+                `• \`${prefix}collection [@user] [page]\` — View your full collection\n` +
+                `• \`${prefix}inspect <number>\` — Full details on one Pokémon\n` +
+                `• \`${prefix}release <number>\` — Release a Pokémon\n` +
+                `• \`${prefix}trade @user <number>\` — Trade a Pokémon with another player\n\n` +
+                `**━━━ PARTY ━━━**\n` +
+                `• \`${prefix}party [@user]\` — View battle party (up to 6)\n` +
+                `• \`${prefix}pokeparty add/remove/swap\` — Manage your party\n` +
+                `• \`${prefix}moves <slot>\` — View moves + PP for a party Pokémon\n\n` +
+                `**━━━ INFO ━━━**\n` +
+                `• \`${prefix}pokedex <name/id>\` — Look up any Pokémon\n` +
+                `• \`${prefix}dexcompletion [@user]\` — Check Pokédex completion %\n` +
+                `• \`${prefix}pokeleaderboard [catches/wins/shinies/level]\` — Server leaderboards`
             );
 
         const embed2 = new EmbedBuilder()
             .setColor(0xFFD700)
-            .setTitle('🎮 SOLDIER² — Pokémon System (2/2)')
+            .setTitle('🎮 SOLDIER² — Pokémon System (2/3)')
             .setDescription(
+                `**━━━ BATTLES ━━━**\n` +
+                `• \`${prefix}battle pve\` — Fight a wild Pokémon\n` +
+                `• \`${prefix}battle pvp @user\` — Challenge another trainer\n` +
+                `• \`${prefix}switch <slot>\` — Switch your active Pokémon (costs your turn)\n` +
+                `• \`${prefix}forfeit\` — Surrender\n` +
+                `• \`${prefix}battlestatus\` — Resend battle embed\n` +
+                `• React 1️⃣2️⃣3️⃣4️⃣ to pick moves — 60 seconds per turn\n\n` +
                 `**━━━ BATTLE MECHANICS ━━━**\n` +
-                `• Damage uses the real **Fire Red GBA formula** — Level, Attack, Defense, Power\n` +
-                `• **STAB bonus** — 1.5× damage when move type matches Pokémon type\n` +
-                `• **Type effectiveness** — Super effective (2×), not very effective (0.5×), immune (0×)\n` +
-                `• **Critical hits** — 1 in 16 chance for 1.5× damage\n` +
-                `• **Accuracy** — moves can miss based on their accuracy stat\n` +
-                `• **Random factor** — damage varies 85–100% each hit\n\n` +
-                `**━━━ STATUS CONDITIONS ━━━**\n` +
-                `• 🔥 **Burn** — Halves physical attack, deals 1/16 max HP per turn\n` +
-                `• ⚡ **Paralysis** — 25% chance to be unable to move each turn\n` +
-                `• ☠️ **Poison** — Deals 1/8 max HP damage per turn\n` +
-                `• 😴 **Sleep** — Unable to move for up to 3 turns\n` +
-                `• 🧊 **Freeze** — Unable to move, 20% thaw chance each turn\n` +
-                `• 😵 **Confusion** — 50% chance to hurt itself (1/8 max HP)\n\n` +
-                `**━━━ XP & LEVELING ━━━**\n` +
-                `• Win battles to earn **XP** for your lead Pokémon\n` +
-                `• XP gained = 50 + (5 × number of turns in battle)\n` +
-                `• Pokémon level up automatically when enough XP is earned\n` +
-                `• Max level is **100**\n\n` +
+                `• Real Fire Red damage formula with STAB, type chart, crits, accuracy\n` +
+                `• **PP system** — each move has limited uses, runs out = Struggle\n` +
+                `• **Abilities** — Blaze, Torrent, Levitate, Intimidate + 30 more\n` +
+                `• **Weather** — Rain Dance, Sunny Day, Sandstorm, Hail change damage + background\n` +
+                `• **Status** — 🔥 Burn | ⚡ Paralysis | ☠️ Poison | 😴 Sleep | 🧊 Freeze | 😵 Confusion\n\n` +
+                `**━━━ LEVELING & EVOLUTION ━━━**\n` +
+                `• Win battles to earn XP — Pokémon level up automatically\n` +
+                `• On level up you may be asked to **learn a new move** (replace or skip)\n` +
+                `• When evolution level is reached you choose to **evolve or cancel**\n` +
+                `• Max level: **100**`
+            );
+
+        const embed3 = new EmbedBuilder()
+            .setColor(0xFFD700)
+            .setTitle('🎮 SOLDIER² — Pokémon System (3/3)')
+            .setDescription(
                 `**━━━ STAFF COMMANDS ━━━**\n` +
                 `• \`${prefix}givepokemon @user <name> [shiny] [level]\` — Give a Pokémon *(Officers+)*\n` +
-                `• \`${prefix}resetpokemon @user\` — Wipe a user's full collection *(Officers+)*\n` +
-                `• \`${prefix}setspawnchannel #channel\` — Set the wild spawn channel *(Enlisted+)*\n` +
-                `• \`${prefix}spawnpokemon\` — Manually trigger a wild spawn *(Officers+)*\n\n` +
+                `• \`${prefix}resetpokemon @user\` — Wipe collection *(Officers+)*\n` +
+                `• \`${prefix}setspawnchannel #channel\` — Set spawn channel *(Enlisted+)*\n` +
+                `• \`${prefix}spawnpokemon\` — Manual spawn *(Officers+)*\n\n` +
                 `**━━━ TIPS ━━━**\n` +
-                `• Use \`${prefix}pokeparty swap\` to put your strongest Pokémon in slot 1 — it always fights first\n` +
-                `• Check \`${prefix}pokedex <name>\` before a battle to know type matchups\n` +
-                `• Shiny Pokémon are purely cosmetic — same stats as normal ones\n` +
-                `• All 1025 Pokémon from every generation can spawn and be given`
+                `• Put your strongest Pokémon in party slot 1 — it battles first\n` +
+                `• Ultra Ball (2×) and Quick Ball (5× turn 1) are the best early catches\n` +
+                `• Master Ball catches anything — save it for legendaries\n` +
+                `• Use \`${prefix}switch <slot>\` mid-battle to counter type matchups\n` +
+                `• Weather effects show on the battle image background\n` +
+                `• All 1025 Pokémon from every generation can spawn`
             )
             .setImage('https://media.giphy.com/media/3ohzdYJK1wAdPWVk88/giphy.gif')
-            .setFooter({ text: 'SOLDIER³ Pokémon System • Bot developer: TX-SOLDIER' });
+            .setFooter({ text: 'SOLDIER² Pokémon System • Bot developer: TX-SOLDIER' });
 
         await message.channel.send({ embeds: [embed1] });
         await message.channel.send({ embeds: [embed2] });
+        await message.channel.send({ embeds: [embed3] });
         return;
-    }
+    }     
 
 // =========================================================
 //  HELP COMMANDS
