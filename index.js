@@ -2357,8 +2357,6 @@ function buildBattleEmbed(battle, turnLog = [], imageAttachment = null) {
     const p1    = battle.player1;
     const p2    = battle.player2;
     const isBot = battle.type === 'pve';
-    const p1Bar = buildHPBar(p1.currentHp, p1.maxHp);
-    const p2Bar = buildHPBar(p2.currentHp, p2.maxHp);
     const p1Stat = p1.statusEffect ? ` ${getStatusEmoji(p1.statusEffect)} ${p1.statusEffect.toUpperCase()}` : '';
     const p2Stat = p2.statusEffect ? ` ${getStatusEmoji(p2.statusEffect)} ${p2.statusEffect.toUpperCase()}` : '';
 
@@ -2368,12 +2366,12 @@ function buildBattleEmbed(battle, turnLog = [], imageAttachment = null) {
         .addFields(
             {
                 name:  `${isBot ? '🤖 BOT' : `<@${p2.userId}>`} — ${p2.shiny ? '✨ ' : ''}${formatPokeName(p2.pokemon.name)} Lv.${p2.pokemon.level}`,
-                value: `HP: ${p2Bar}${p2Stat}`,
+                value: `HP: \`${p2.currentHp}/${p2.maxHp}\`${p2Stat}`,
                 inline: false,
             },
             {
                 name:  `<@${p1.userId}> — ${p1.shiny ? '✨ ' : ''}${formatPokeName(p1.pokemon.name)} Lv.${p1.pokemon.level}`,
-                value: `HP: ${p1Bar}${p1Stat}`,
+                value: `HP: \`${p1.currentHp}/${p1.maxHp}\`${p1Stat}`,
                 inline: false,
             },
         );
