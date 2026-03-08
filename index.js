@@ -2683,7 +2683,9 @@ async function executeTurn(battleId, channel) {
             const struggleDmg = Math.max(1, Math.floor(defender.maxHp / 4));
             const recoilDmg   = Math.max(1, Math.floor(attacker.maxHp / 4));
             defender.currentHp = Math.max(0, defender.currentHp - struggleDmg);
+            defender.pokemon.currentBattleHp = defender.currentHp;
             attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
+            attacker.pokemon.currentBattleHp = attacker.currentHp;
             turnLog.push(`💥 **${formatPokeName(defender.pokemon.name)}** took **${struggleDmg}** damage!`);
             turnLog.push(`💢 **${formatPokeName(attacker.pokemon.name)}** took **${recoilDmg}** recoil damage!`);
             continue;
@@ -2706,6 +2708,7 @@ async function executeTurn(battleId, channel) {
         const effectText = getEffectivenessText(result.effectiveness);
         if (effectText) turnLog.push(effectText);
 
+        defender.currentHp = Math.max(0, defender.currentHp - result.damage);
         defender.pokemon.currentBattleHp = defender.currentHp;
         turnLog.push(`💥 **${formatPokeName(defender.pokemon.name)}** took **${result.damage}** damage!`);
         turnLog.push(...applyMoveEffect(moveData, defender));
