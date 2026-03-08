@@ -1188,7 +1188,7 @@ const SHINY_ODDS         = 4096;
 const SPAWN_MIN_MINUTES  = 15;
 const SPAWN_MAX_MINUTES  = 45;
 const SPAWN_DESPAWN_MINS = 10;
-const BATTLE_MOVE_TIMEOUT = 60000; // 60 seconds to pick a move
+const BATTLE_MOVE_TIMEOUT = 120000; // 2 minutes to pick a move
 
 // ── All Pokémon IDs 1–1025 ──
 const SPAWN_POOL = Array.from({ length: 1025 }, (_, i) => i + 1);
@@ -3164,7 +3164,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
                 await battleMsg.edit({ embeds: [buildBattleEmbed(battle, switchLog, imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
             }
 
-            if (battle.p1Move && battle.p2Move) await executeTurn(battleId, channel);
+            if (battle.p1Move && battle.p2Move) setTimeout(() => executeTurn(battleId, channel), 2500);
             return;
         }
 
@@ -3263,7 +3263,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
                 await battleMsg.edit({ embeds: [buildBattleEmbed(battle, [msg], imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
             }
 
-            if (battle.p1Move && battle.p2Move) await executeTurn(battleId, channel);
+            if (battle.p1Move && battle.p2Move) setTimeout(() => executeTurn(battleId, channel), 2500);
             return;
         }
 
@@ -3291,7 +3291,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
                 .then(m => setTimeout(() => m.delete().catch(() => {}), 4000)).catch(() => {});
         }
 
-        if (battle.p1Move && battle.p2Move) await executeTurn(battleId, channel);
+        if (battle.p1Move && battle.p2Move) setTimeout(() => executeTurn(battleId, channel), 2500);
         return;
             
     }
