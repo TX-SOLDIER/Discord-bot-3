@@ -2389,9 +2389,11 @@ function buildBattleEmbed(battle, turnLog = [], imageAttachment = null) {
     if (battle.phase === 'selecting' && !battle.switchPending) {
         embed.addFields({
             name:  '🎮 Select Your Move',
-            value: battle.player1.pokemon.moves.map((m, i) =>
-                `${['1️⃣','2️⃣','3️⃣','4️⃣'][i]} \`${formatPokeName(m)}\``
-            ).join('\n'),
+            value: battle.player1.pokemon.moves.map((m, i) => {
+                const pp = battle.player1.pokemon.pp?.[m];
+                const ppStr = pp !== undefined ? ` *(${pp} PP)*` : '';
+                return `${['1️⃣','2️⃣','3️⃣','4️⃣'][i]} \`${formatPokeName(m)}\`${ppStr}`;
+            }).join('\n'),
             inline: false,
         });
     }
@@ -2400,7 +2402,7 @@ function buildBattleEmbed(battle, turnLog = [], imageAttachment = null) {
         const ud        = getUserPokemon(battle.switchPending);
         const available = ud.party
             .map((idx, slot) => ({ idx, slot, pkm: ud.collection[idx] }))
-            .filter(e => e.pkm && e.pkm.uid !== battle.player1.pokemon.uid);
+            .filter(e => e.pkm && e.pkm.uid !== battle.player1.pokemon.uid && e.pkm.stats.hp > 0);
         const switchLines = available.map((e, i) =>
             `${['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'][i]} ${formatPokeName(e.pkm.name)} Lv.${e.pkm.level}`
         );
@@ -2704,7 +2706,7 @@ async function executeTurn(battleId, channel) {
         const effectText = getEffectivenessText(result.effectiveness);
         if (effectText) turnLog.push(effectText);
 
-        defender.currentHp = Math.max(0, defender.currentHp - result.damage);
+        defender.pokemon.currentBattleHp = defender.currentHp;
         turnLog.push(`💥 **${formatPokeName(defender.pokemon.name)}** took **${result.damage}** damage!`);
         turnLog.push(...applyMoveEffect(moveData, defender));
 
@@ -2728,7 +2730,7 @@ async function executeTurn(battleId, channel) {
             const ud        = getUserPokemon(faintedFighter.userId);
             const available = ud.party
                 .map(idx => ud.collection[idx])
-                .filter(p => p && p.uid !== faintedFighter.pokemon.uid);
+                .filter(p => p && p.uid !== faintedFighter.pokemon.uid && p.stats.hp > 0);
 
             if (available.length > 0) {
                 battle.switchPending = faintedFighter.userId;
@@ -3044,7 +3046,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
             const ud        = getUserPokemon(user.id);
             const available = ud.party
                 .map(idx => ud.collection[idx])
-                .filter(p => p && p.uid !== battle.player1.pokemon.uid);
+                .filter(p => p && p.uid !== battle.player1.pokemon.uid && p.stats.hp > 0);
 
             const switchIndex = switchEmojis.indexOf(reaction.emoji.name);
             const chosen      = available[switchIndex];
@@ -3055,7 +3057,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
             const fighter = isP1 ? battle.player1 : battle.player2;
 
             fighter.pokemon      = chosen;
-            fighter.currentHp    = chosen.stats.hp;
+            fighter.currentHp    = chosen.currentBattleHp ?? chosen.stats.hp;
             fighter.maxHp        = chosen.stats.hp;
             fighter.statusEffect = null;
             fighter.sleepTurns   = 0;
@@ -3067,23 +3069,16 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
             markDirty(); scheduleSave();
 
-            const switchMsg = new EmbedBuilder()
-                .setColor(0x3498DB)
-                .setTitle('🔄 Pokémon Switched!')
-                .setDescription(
-                    `<@${user.id}> sent out **${chosen.shiny ? '✨ ' : ''}${formatPokeName(chosen.name)}**!`
-                )
-                .setThumbnail(chosen.sprite)
-                .setTimestamp()
-                .setFooter({ text: 'SOLDIER² Pokémon Battle' });
+            
 
-            await channel.send({ embeds: [switchMsg] }).catch(() => {});
+            
 
             const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
             if (battleMsg) {
                 const imgBuf  = await generateBattleImage(battle).catch(() => null);
                 const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: 'battle.png' }) : null;
-                await battleMsg.edit({ embeds: [buildBattleEmbed(battle, [], imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
+                const switchLog = [`🔄 <@${user.id}> sent out **${chosen.shiny ? '✨ ' : ''}${formatPokeName(chosen.name)}**!`];
+                await battleMsg.edit({ embeds: [buildBattleEmbed(battle, switchLog, imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
                 await battleMsg.reactions.removeAll().catch(() => {});
                 for (const emoji of moveEmojis) {
                     await battleMsg.react(emoji).catch(() => {});
