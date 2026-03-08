@@ -2766,7 +2766,7 @@ async function executeTurn(battleId, channel) {
         const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: `battle_${battle.turnNumber}.png` }) : null;
         await battleMsg.edit({ embeds: [buildBattleEmbed(battle, turnLog, imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
         await battleMsg.reactions.removeAll().catch(() => {});
-        for (const emoji of ['1️⃣','2️⃣','3️⃣','4️⃣']) await battleMsg.react(emoji).catch(() => {});
+        for (const emoji of ['1️⃣','2️⃣','3️⃣','4️⃣','🎒','🔄']) await battleMsg.react(emoji).catch(() => {});
     }
 
     if (battle.type === 'pve') {
@@ -2805,12 +2805,18 @@ async function endBattle(battleId, channel, turnLog, winnerSide) {
         }
         ud.battleStats.wins = (ud.battleStats?.wins || 0) + 1;
         markDirty(); scheduleSave();
+        for (const idx of ud.party) {
+            if (ud.collection[idx]) await restoreAllPP(ud.collection[idx]);
+        }
     }
 
     if (loser.userId !== 'BOT') {
         const lu = getUserPokemon(loser.userId);
         lu.battleStats.losses = (lu.battleStats?.losses || 0) + 1;
         markDirty(); scheduleSave();
+        for (const idx of lu.party) {
+            if (lu.collection[idx]) await restoreAllPP(lu.collection[idx]);
+        }
     }
 
     battle.phase = 'ended';
@@ -3082,9 +3088,9 @@ client.on('messageReactionAdd', async (reaction, user) => {
                 const switchLog = [`🔄 <@${user.id}> sent out **${chosen.shiny ? '✨ ' : ''}${formatPokeName(chosen.name)}**!`];
                 await battleMsg.edit({ embeds: [buildBattleEmbed(battle, switchLog, imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
                 await battleMsg.reactions.removeAll().catch(() => {});
-                for (const emoji of moveEmojis) {
+            for (const emoji of [...moveEmojis, '🎒', '🔄']) {
                     await battleMsg.react(emoji).catch(() => {});
-                }
+            }
             }
 
             // If PvE pick bot move and start timeout
@@ -6872,7 +6878,7 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
             const battleMsg    = await message.channel.send({ embeds: [battleEmbed], files: battleFile ? [battleFile] : [] });
             battle.battleMsgId = battleMsg.id;
 
-            for (const emoji of ['1️⃣','2️⃣','3️⃣','4️⃣']) {
+            for (const emoji of ['1️⃣','2️⃣','3️⃣','4️⃣','🎒','🔄']) {
                 await battleMsg.react(emoji).catch(() => {});
             }
 
