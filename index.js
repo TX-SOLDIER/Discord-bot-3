@@ -2414,7 +2414,7 @@ function buildBattleEmbed(battle, turnLog = [], imageAttachment = null) {
     }
  if (p2.pokemon.sprite) embed.setImage(p2.pokemon.sprite);
     if (p1.pokemon.sprite) embed.setThumbnail(p1.pokemon.sprite);
-    if (imageAttachment) embed.setImage('attachment://battle.png');
+    if (imageAttachment) embed.setImage(`attachment://${imageAttachment.name}`);
     embed.setFooter({ text: 'SOLDIER³ Pokémon Battle' }).setTimestamp();
     return embed;
 }
@@ -2764,7 +2764,7 @@ async function executeTurn(battleId, channel) {
     const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
     if (battleMsg) {
         const imgBuf  = await generateBattleImage(battle).catch(() => null);
-        const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: 'battle.png' }) : null;
+        const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: `battle_${battle.turnNumber}.png` }) : null;
         await battleMsg.edit({ embeds: [buildBattleEmbed(battle, turnLog, imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
         await battleMsg.reactions.removeAll().catch(() => {});
         for (const emoji of ['1️⃣','2️⃣','3️⃣','4️⃣']) await battleMsg.react(emoji).catch(() => {});
@@ -2816,7 +2816,7 @@ async function endBattle(battleId, channel, turnLog, winnerSide) {
 
     battle.phase = 'ended';
     const imgBuf     = await generateBattleImage(battle).catch(() => null);
-    const imgFile    = imgBuf ? new AttachmentBuilder(imgBuf, { name: 'battle.png' }) : null;
+    const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: `battle_${battle.turnNumber}.png` }) : null;
     const finalEmbed = buildBattleEmbed(battle, turnLog, imgFile);
     finalEmbed.setColor(0xFFD700).setTitle('🏆 Battle Over!');
 
