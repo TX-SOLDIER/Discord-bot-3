@@ -2617,6 +2617,7 @@ async function executeTurn(battleId, channel) {
         const moveName = who === 'p1' ? battle.p1Move  : battle.p2Move;
 
         if (attacker.currentHp <= 0) continue;
+        if (moveName === '__item__' || moveName === '__switch__') continue;
         if (defender.currentHp <= 0) break;
 
         const statusResult = applyEndOfTurnStatus(attacker);
@@ -3044,111 +3045,255 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     if (battleEntry) {
         const [battleId, battle] = battleEntry;
-        const moveEmojis         = ['1️⃣','2️⃣','3️⃣','4️⃣'];
-        const switchEmojis       = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
+        const moveEmojis   = ['1️⃣','2️⃣','3️⃣','4️⃣'];
+        const selectEmojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
+        const emoji        = reaction.emoji.name;
 
         // ── Faint switch selection ──
         if (battle.phase === 'switching' && battle.switchPending === user.id) {
-            if (!switchEmojis.includes(reaction.emoji.name)) return;
+            if (!selectEmojis.includes(emoji)) return;
 
             const ud        = getUserPokemon(user.id);
             const available = ud.party
                 .map(idx => ud.collection[idx])
-              .filter(p => p && p.uid !== battle.player1.pokemon.uid && (p.currentBattleHp ?? p.stats.hp) > 0);
+                .filter(p => p && p.uid !== battle.player1.pokemon.uid && (p.currentBattleHp ?? p.stats.hp) > 0);
 
-            const switchIndex = switchEmojis.indexOf(reaction.emoji.name);
-            const chosen      = available[switchIndex];
+            const chosen = available[selectEmojis.indexOf(emoji)];
             if (!chosen) return;
 
-            // Swap in the new Pokémon
-            const isP1 = battle.player1.userId === user.id;
+            const isP1    = battle.player1.userId === user.id;
             const fighter = isP1 ? battle.player1 : battle.player2;
 
-            fighter.pokemon      = chosen;
-            fighter.currentHp    = chosen.currentBattleHp ?? chosen.stats.hp;
-            fighter.maxHp        = chosen.stats.hp;
-            fighter.statusEffect = null;
-            fighter.sleepTurns   = 0;
+            fighter.pokemon        = chosen;
+            fighter.currentHp      = chosen.currentBattleHp ?? chosen.stats.hp;
+            fighter.maxHp          = chosen.stats.hp;
+            fighter.statusEffect   = null;
+            fighter.sleepTurns     = 0;
             fighter.confusionTurns = 0;
-            battle.switchPending = null;
-            battle.phase         = 'selecting';
-            battle.p1Move        = null;
-            battle.p2Move        = null;
-
+            battle.switchPending   = null;
+            battle.phase           = 'selecting';
+            battle.p1Move          = null;
+            battle.p2Move          = null;
             markDirty(); scheduleSave();
-
-            
-
-            
 
             const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
             if (battleMsg) {
                 const imgBuf  = await generateBattleImage(battle).catch(() => null);
-                const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: 'battle.png' }) : null;
+                const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: `battle_${battle.turnNumber}.png` }) : null;
                 const switchLog = [`🔄 <@${user.id}> sent out **${chosen.shiny ? '✨ ' : ''}${formatPokeName(chosen.name)}**!`];
                 await battleMsg.edit({ embeds: [buildBattleEmbed(battle, switchLog, imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
                 await battleMsg.reactions.removeAll().catch(() => {});
-            for (const emoji of [...moveEmojis, '🎒', '🔄']) {
-                    await battleMsg.react(emoji).catch(() => {});
-            }
+                for (const e of [...moveEmojis, '🎒', '🔄']) await battleMsg.react(e).catch(() => {});
             }
 
-            // If PvE pick bot move and start timeout
+            if (battle.type === 'pve') {
+                battle.p2Move = await getBotMove(battle.player2);
+                markDirty(); scheduleSave();
+            }
+            setMoveTimeout(battleId, channel);
+            return;
+        }
+
+        // ── 🔄 Voluntary switch — open menu ──
+        if (battle.phase === 'selecting' && emoji === '🔄' && user.id === battle.player1.userId && !battle.p1Move) {
+            const ud        = getUserPokemon(user.id);
+            const available = ud.party
+                .map(idx => ud.collection[idx])
+                .filter(p => p && p.uid !== battle.player1.pokemon.uid && (p.currentBattleHp ?? p.stats.hp) > 0);
+
+            if (!available.length) {
+                await channel.send({ embeds: [new EmbedBuilder().setColor(0xE74C3C).setDescription('❌ No other Pokémon available to switch to!').setFooter({ text: 'SOLDIER² Pokémon Battle' })] })
+                    .then(m => setTimeout(() => m.delete().catch(() => {}), 4000)).catch(() => {});
+                return;
+            }
+
+            battle.phase         = 'switchselect';
+            battle.switchPending = user.id;
+
+            const switchLines = available.map((p, i) =>
+                `${selectEmojis[i]} ${p.shiny ? '✨ ' : ''}**${formatPokeName(p.name)}** Lv.${p.level} — HP: ${p.currentBattleHp ?? p.stats.hp}/${p.stats.hp}`
+            ).join('\n');
+
+            const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
+            if (battleMsg) {
+                await battleMsg.reactions.removeAll().catch(() => {});
+                await battleMsg.edit({ embeds: [new EmbedBuilder()
+                    .setColor(0x3498DB)
+                    .setTitle('🔄 Switch Pokémon')
+                    .setDescription(`<@${user.id}> — choose a Pokémon to switch to:\n\n${switchLines}\n\n*Switching costs your turn.*`)
+                    .setFooter({ text: 'SOLDIER² Pokémon Battle' })
+                ]}).catch(() => {});
+                for (let i = 0; i < available.length; i++) await battleMsg.react(selectEmojis[i]).catch(() => {});
+            }
+            return;
+        }
+
+        // ── 🔄 Voluntary switch — pick Pokémon ──
+        if (battle.phase === 'switchselect' && battle.switchPending === user.id && selectEmojis.includes(emoji)) {
+            const ud        = getUserPokemon(user.id);
+            const available = ud.party
+                .map(idx => ud.collection[idx])
+                .filter(p => p && p.uid !== battle.player1.pokemon.uid && (p.currentBattleHp ?? p.stats.hp) > 0);
+
+            const chosen = available[selectEmojis.indexOf(emoji)];
+            if (!chosen) return;
+
+            battle.player1.pokemon        = chosen;
+            battle.player1.currentHp      = chosen.currentBattleHp ?? chosen.stats.hp;
+            battle.player1.maxHp          = chosen.stats.hp;
+            battle.player1.statusEffect   = null;
+            battle.player1.sleepTurns     = 0;
+            battle.player1.confusionTurns = 0;
+            battle.player1.atkMod         = 1;
+            battle.player1.atkBoost       = 1;
+            battle.p1Move                 = '__switch__';
+            battle.switchPending          = null;
+            battle.phase                  = 'selecting';
+            markDirty(); scheduleSave();
+
             if (battle.type === 'pve') {
                 battle.p2Move = await getBotMove(battle.player2);
                 markDirty(); scheduleSave();
             }
 
-            setMoveTimeout(battleId, channel);
+            const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
+            if (battleMsg) {
+                const imgBuf  = await generateBattleImage(battle).catch(() => null);
+                const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: `battle_${battle.turnNumber}.png` }) : null;
+                const switchLog = [`🔄 <@${user.id}> switched to **${chosen.shiny ? '✨ ' : ''}${formatPokeName(chosen.name)}**! *(turn used)*`];
+                await battleMsg.edit({ embeds: [buildBattleEmbed(battle, switchLog, imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
+            }
+
+            if (battle.p1Move && battle.p2Move) await executeTurn(battleId, channel);
+            return;
+        }
+
+        // ── 🎒 Bag — open item menu ──
+        if (battle.phase === 'selecting' && emoji === '🎒' && user.id === battle.player1.userId && !battle.p1Move) {
+            const bag       = getUserBag(user.id);
+            const healItems = Object.entries(bag.healing || {})
+                .filter(([, qty]) => qty > 0)
+                .map(([key, qty]) => ({ key, qty, def: POKE_ITEMS.healing[key] }))
+                .filter(e => e.def);
+
+            if (!healItems.length) {
+                await channel.send({ embeds: [new EmbedBuilder().setColor(0xE74C3C).setDescription('❌ You have no healing items!').setFooter({ text: 'SOLDIER² Pokémon Battle' })] })
+                    .then(m => setTimeout(() => m.delete().catch(() => {}), 4000)).catch(() => {});
+                return;
+            }
+
+            battle.phase         = 'itemselect';
+            battle.switchPending = user.id;
+
+            const itemLines = healItems.slice(0, 5).map((e, i) =>
+                `${selectEmojis[i]} **${e.def.label}** ×${e.qty}`
+            ).join('\n');
+
+            const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
+            if (battleMsg) {
+                await battleMsg.reactions.removeAll().catch(() => {});
+                await battleMsg.edit({ embeds: [new EmbedBuilder()
+                    .setColor(0x2ECC71)
+                    .setTitle('🎒 Use an Item')
+                    .setDescription(`<@${user.id}> — choose an item:\n\n${itemLines}\n\n*Using an item costs your turn.*`)
+                    .setFooter({ text: 'SOLDIER² Pokémon Battle' })
+                ]}).catch(() => {});
+                for (let i = 0; i < Math.min(healItems.length, 5); i++) await battleMsg.react(selectEmojis[i]).catch(() => {});
+            }
+            return;
+        }
+
+        // ── 🎒 Item selection — apply item ──
+        if (battle.phase === 'itemselect' && battle.switchPending === user.id && selectEmojis.includes(emoji)) {
+            const bag       = getUserBag(user.id);
+            const healItems = Object.entries(bag.healing || {})
+                .filter(([, qty]) => qty > 0)
+                .map(([key, qty]) => ({ key, qty, def: POKE_ITEMS.healing[key] }))
+                .filter(e => e.def);
+
+            const chosen = healItems[selectEmojis.indexOf(emoji)];
+            if (!chosen) return;
+
+            const fighter = battle.player1;
+            const pkm     = fighter.pokemon;
+            const key     = chosen.key;
+            let healAmt   = 0;
+            let msg       = '';
+
+            if (key === 'potion')             healAmt = 20;
+            else if (key === 'super-potion')  healAmt = 60;
+            else if (key === 'hyper-potion')  healAmt = 120;
+            else if (key === 'max-potion')    healAmt = fighter.maxHp - fighter.currentHp;
+            else if (key === 'full-restore')  { healAmt = fighter.maxHp - fighter.currentHp; fighter.statusEffect = null; }
+            else if (key === 'antidote')      { if (fighter.statusEffect === 'poison')    { fighter.statusEffect = null; msg = '☠️ Poison cured!'; } }
+            else if (key === 'burn-heal')     { if (fighter.statusEffect === 'burn')      { fighter.statusEffect = null; msg = '🔥 Burn cured!'; } }
+            else if (key === 'ice-heal')      { if (fighter.statusEffect === 'freeze')    { fighter.statusEffect = null; msg = '🧊 Freeze cured!'; } }
+            else if (key === 'awakening')     { if (fighter.statusEffect === 'sleep')     { fighter.statusEffect = null; msg = '😴 Woke up!'; } }
+            else if (key === 'paralyze-heal') { if (fighter.statusEffect === 'paralysis') { fighter.statusEffect = null; msg = '⚡ Paralysis cured!'; } }
+            else if (key === 'full-heal')     { fighter.statusEffect = null; msg = '✅ All status conditions cured!'; }
+            else if (key === 'ether')         { for (const m of pkm.moves) { if (pkm.pp?.[m] !== undefined) pkm.pp[m] = Math.min((pkm.pp[m] || 0) + 10, 35); } msg = '🔵 Restored 10 PP to all moves!'; }
+            else if (key === 'max-ether')     { for (const m of pkm.moves) { const md = await fetchMove(m); if (pkm.pp) pkm.pp[m] = md?.pp || 10; } msg = '🔵 Fully restored PP to all moves!'; }
+            else if (key === 'elixir')        { for (const m of pkm.moves) { if (pkm.pp?.[m] !== undefined) pkm.pp[m] = Math.min((pkm.pp[m] || 0) + 10, 35); } msg = '🔵 Restored 10 PP to all moves!'; }
+            else if (key === 'max-elixir')    { await restoreAllPP(pkm); msg = '🔵 Fully restored all PP!'; }
+            else if (key.includes('berry'))   healAmt = 20;
+
+            if (healAmt > 0) {
+                fighter.currentHp   = Math.min(fighter.maxHp, fighter.currentHp + healAmt);
+                pkm.currentBattleHp = fighter.currentHp;
+                msg = `💚 **${formatPokeName(pkm.name)}** restored **${healAmt} HP**!`;
+            }
+
+            if (!msg) msg = '❌ That item had no effect.';
+
+            removeFromBag(user.id, 'healing', key, 1);
+            battle.p1Move        = '__item__';
+            battle.switchPending = null;
+            battle.phase         = 'selecting';
+            markDirty(); scheduleSave();
+
+            if (battle.type === 'pve' && !battle.p2Move) {
+                battle.p2Move = await getBotMove(battle.player2);
+                markDirty(); scheduleSave();
+            }
+
+            const battleMsg = await channel.messages.fetch(battle.battleMsgId).catch(() => null);
+            if (battleMsg) {
+                const imgBuf  = await generateBattleImage(battle).catch(() => null);
+                const imgFile = imgBuf ? new AttachmentBuilder(imgBuf, { name: `battle_${battle.turnNumber}.png` }) : null;
+                await battleMsg.edit({ embeds: [buildBattleEmbed(battle, [msg], imgFile)], files: imgFile ? [imgFile] : [] }).catch(() => {});
+            }
+
+            if (battle.p1Move && battle.p2Move) await executeTurn(battleId, channel);
             return;
         }
 
         // ── Move selection ──
         if (battle.phase !== 'selecting') return;
-        if (!moveEmojis.includes(reaction.emoji.name)) return;
+        if (!moveEmojis.includes(emoji)) return;
 
-        const moveIndex = moveEmojis.indexOf(reaction.emoji.name);
+        const moveIndex = moveEmojis.indexOf(emoji);
 
-        // Player 1 picking
         if (user.id === battle.player1.userId && !battle.p1Move) {
             const move = battle.player1.pokemon.moves[moveIndex];
             if (!move) return;
             battle.p1Move = move;
             markDirty(); scheduleSave();
-
-            await channel.send({
-                embeds: [
-                    new EmbedBuilder()
-                        .setColor(0x3498DB)
-                        .setDescription(`<@${user.id}> selected **${formatPokeName(move)}**!`)
-                        .setFooter({ text: 'SOLDIER² Pokémon Battle' })
-                ]
-            }).then(m => setTimeout(() => m.delete().catch(() => {}), 4000)).catch(() => {});
+            await channel.send({ embeds: [new EmbedBuilder().setColor(0x3498DB).setDescription(`<@${user.id}> selected **${formatPokeName(move)}**!`).setFooter({ text: 'SOLDIER² Pokémon Battle' })] })
+                .then(m => setTimeout(() => m.delete().catch(() => {}), 4000)).catch(() => {});
         }
 
-        // Player 2 picking (PvP only)
         if (battle.type === 'pvp' && user.id === battle.player2.userId && !battle.p2Move) {
             const move = battle.player2.pokemon.moves[moveIndex];
             if (!move) return;
             battle.p2Move = move;
             markDirty(); scheduleSave();
-
-            await channel.send({
-                embeds: [
-                    new EmbedBuilder()
-                        .setColor(0x9B59B6)
-                        .setDescription(`<@${user.id}> selected their move!`)
-                        .setFooter({ text: 'SOLDIER² Pokémon Battle' })
-                ]
-            }).then(m => setTimeout(() => m.delete().catch(() => {}), 4000)).catch(() => {});
+            await channel.send({ embeds: [new EmbedBuilder().setColor(0x9B59B6).setDescription(`<@${user.id}> selected their move!`).setFooter({ text: 'SOLDIER² Pokémon Battle' })] })
+                .then(m => setTimeout(() => m.delete().catch(() => {}), 4000)).catch(() => {});
         }
 
-        // Both moves selected — execute turn
-        if (battle.p1Move && battle.p2Move) {
-            await executeTurn(battleId, channel);
-        }
-
+        if (battle.p1Move && battle.p2Move) await executeTurn(battleId, channel);
         return;
+            
     }
 
     // ══════════════════════════════════════════
