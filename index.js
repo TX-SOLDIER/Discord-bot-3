@@ -2794,7 +2794,7 @@ async function endBattle(battleId, channel, turnLog, winnerSide) {
 
     if (winner.userId !== 'BOT') {
         const ud  = getUserPokemon(winner.userId);
-        const idx = ud.party[0];
+        const idx = ud.party.find(i => ud.collection[i]?.uid === winner.pokemon.uid) ?? ud.party[0];
         if (idx !== undefined && ud.collection[idx]) {
             const gainedXp = 50 + battle.turnNumber * 5;
             ud.collection[idx].xp += gainedXp;
