@@ -2402,7 +2402,7 @@ function buildBattleEmbed(battle, turnLog = [], imageAttachment = null) {
         const ud        = getUserPokemon(battle.switchPending);
         const available = ud.party
             .map((idx, slot) => ({ idx, slot, pkm: ud.collection[idx] }))
-            .filter(e => e.pkm && e.pkm.uid !== battle.player1.pokemon.uid && e.pkm.stats.hp > 0);
+            .filter(e => e.pkm && e.pkm.uid !== battle.player1.pokemon.uid && (e.pkm.currentBattleHp ?? e.pkm.stats.hp) > 0);
         const switchLines = available.map((e, i) =>
             `${['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'][i]} ${formatPokeName(e.pkm.name)} Lv.${e.pkm.level}`
         );
@@ -2733,8 +2733,7 @@ async function executeTurn(battleId, channel) {
             const ud        = getUserPokemon(faintedFighter.userId);
             const available = ud.party
                 .map(idx => ud.collection[idx])
-                .filter(p => p && p.uid !== faintedFighter.pokemon.uid && p.stats.hp > 0);
-
+                .filter(p => p && p.uid !== faintedFighter.pokemon.uid && (p.currentBattleHp ?? p.stats.hp) > 0);
             if (available.length > 0) {
                 battle.switchPending = faintedFighter.userId;
                 battle.phase         = 'switching';
@@ -3049,7 +3048,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
             const ud        = getUserPokemon(user.id);
             const available = ud.party
                 .map(idx => ud.collection[idx])
-                .filter(p => p && p.uid !== battle.player1.pokemon.uid && p.stats.hp > 0);
+              .filter(p => p && p.uid !== battle.player1.pokemon.uid && (p.currentBattleHp ?? p.stats.hp) > 0);
 
             const switchIndex = switchEmojis.indexOf(reaction.emoji.name);
             const chosen      = available[switchIndex];
