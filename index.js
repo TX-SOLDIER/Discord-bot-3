@@ -951,7 +951,7 @@ function canAct(actorId, targetId, guildId) {
     if (aO) {
         if (tG) return { allowed: false, reason: '❌ Officers cannot act on **Generals**.' };
         if (tO) {
-            if (aO === COLONEL_RANK && getRankValue(aO) < getRankValue(tO)) return { allowed: true, reason: 'ok' };
+            if (aO === COLONEL_RANK && getRankValue(tO) > getRankValue(aO)) return { allowed: true, reason: 'ok' };
             return { allowed: false, reason: '❌ Only a **Colonel** can act on lower-ranked Officers.' };
     }
         return { allowed: true, reason: 'ok' };
