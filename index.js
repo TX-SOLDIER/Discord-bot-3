@@ -5103,11 +5103,11 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
         embeds: [
             new EmbedBuilder()
                 .setColor('#8A2BE2') // Purple
-                .setTitle('🛡️ SOLDIER² — Ultimate Protection Bot')
+                .setTitle('🛡️ SOLDIER³ — Ultimate Protection Bot')
                 .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
 
                 .setDescription(
-`**The Ultimate Protection BOT**
+`**SOLDIER BOTS**
 
 **Version 2.0** includes:
 🚫 Anti-Raid Protection  
