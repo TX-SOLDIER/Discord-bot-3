@@ -896,9 +896,10 @@ function removeEnlisted(gid, uid) {
 async function autoAssignCSM(guild) {
     const gid = guild.id;
     if (getCSMOfServer(gid)) return;
-    const hasG = Object.keys(botData.generals || {}).length > 0;
-    const hasO = Object.keys(botData.officers || {}).length > 0;
-    if (!hasG && !hasO) {
+    const hasAnyRank = Object.keys(botData.generals || {}).length > 0 ||
+                       Object.keys(botData.officers || {}).length > 0 ||
+                       Object.keys(botData.enlisted?.[gid] || {}).length > 0;
+    if (!hasAnyRank) {
         const owner = await guild.fetchOwner().catch(() => null);
         if (owner && !isFiveStar(owner.id)) {
             setEnlistedRank(gid, owner.id, CSM_RANK, 'AUTO');
