@@ -5092,19 +5092,43 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
     // ×botinfo
     // --------------------------------------------------
     if (command === 'botinfo') {
-        const up = process.uptime();
-        const h = Math.floor(up / 3600), m = Math.floor((up % 3600) / 60), s = Math.floor(up % 60);
-        let totalUsers = 0; client.guilds.cache.forEach(g => totalUsers += g.memberCount);
-        return reply({ embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle('🤖 Bot Info — SOLDIER²')
-            .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
-            .addFields(
-                { name: '⏱️ Uptime',  value: `${h}h ${m}m ${s}s`,                                 inline: true },
-                { name: '🏠 Servers', value: `${client.guilds.cache.size}`,                        inline: true },
-                { name: '👥 Users',   value: `${totalUsers}`,                                     inline: true },
-                { name: '💾 Memory',  value: `${(process.memoryUsage().heapUsed/1024/1024).toFixed(2)} MB`, inline: true },
-                { name: '📡 Ping',    value: `${client.ws.ping}ms`,                               inline: true },
-                { name: '📦 Version', value: `discord.js v14`,                                    inline: true }
-            ).setTimestamp().setFooter({ text: 'SOLDIER²' })] });
+    const up = process.uptime();
+    const h = Math.floor(up / 3600);
+    const m = Math.floor((up % 3600) / 60);
+    const s = Math.floor(up % 60);
+
+    const { version } = require('discord.js');
+
+    return reply({
+        embeds: [
+            new EmbedBuilder()
+                .setColor('#8A2BE2') // Purple
+                .setTitle('🛡️ SOLDIER² — Ultimate Protection Bot')
+                .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
+
+                .setDescription(
+`**The Ultimate Protection BOT**
+
+**Version 2.0** includes:
+🚫 Anti-Raid Protection  
+🛠️ Moderation Commands  
+🎮 Pokémon System  
+
+📩 **Message \`tx_soldier\` to invite the bot or for bot assistance.**`
+                )
+
+                .addFields(
+                    { name: '⏱️ Uptime', value: `${h}h ${m}m ${s}s`, inline: true },
+                    { name: '📦 Discord.js Version', value: `v${version}`, inline: true },
+                    { name: '⚙️ Bot Version', value: `2.0`, inline: true }
+                )
+
+                .setImage('https://media3.giphy.com/media/v1.Y2lkPTZjMDliOTUyN3d3ZGlvenRlbW81dW01MGM4bnB1NGN3eHRwdG1mejhiNXpwc3ZjdyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Db6GTfMLgAaRDlU0Ij/giphy.gif')
+
+                .setFooter({ text: 'SOLDIER² Security Systems' })
+                .setTimestamp()
+        ]
+    });
     }
     // ── ×birthday <MM/DD> or <MM/DD/YYYY> ──
     if (command === 'birthday') {
