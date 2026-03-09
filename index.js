@@ -5125,7 +5125,7 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
 
                 .setImage('https://media3.giphy.com/media/v1.Y2lkPTZjMDliOTUyN3d3ZGlvenRlbW81dW01MGM4bnB1NGN3eHRwdG1mejhiNXpwc3ZjdyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Db6GTfMLgAaRDlU0Ij/giphy.gif')
 
-                .setFooter({ text: 'SOLDIER² Security Systems' })
+                .setFooter({ text: 'SOLDIER³ Security Systems' })
                 .setTimestamp()
         ]
     });
