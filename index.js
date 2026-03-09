@@ -2968,6 +2968,7 @@ client.on('messageDelete', async message => {
     }
 
     if (!message.guild || message.author?.bot) return;
+    deleteReactionRoleMessage(message.guild.id, message.id);
     // ── Counting — delete detection ──
     {
         const cd = getCountingData(message.guild.id);
@@ -3336,17 +3337,7 @@ client.on('messageReactionRemove', async (reaction, user) => {
 // ============================================================
 //  MESSAGE DELETE — Delete Reaction Role Data
 // ============================================================
-client.on('messageDelete', (message) => {
-    if (!message.guild) return;
-    
-    const gid = message.guild.id;
-    const roles = getReactionRoles(gid, message.id);
-    
-    if (roles) {
-        // This is a reaction role message - delete it permanently
-        deleteReactionRoleMessage(gid, message.id);
-    }
-});
+
 // ── DM Detection — notify owner when someone DMs the bot ──
 client.on('messageCreate', async message => {
     if (!message.author.bot && !message.guild) {
@@ -3402,18 +3393,7 @@ client.on('guildCreate', async guild => {
 // ============================================================
 // ── Track user message watcher ──
 // ============================================================
-client.on('messageCreate', async message => {
-    if (message.author.bot || !message.guild) return;
-    const uid = message.author.id;
-    if (botData.trackedUsers?.[uid]) {
-        const notifyUser = await client.users.fetch(botData.trackedUsers[uid].by).catch(() => null);
-        if (notifyUser) notifyUser.send(
-            `🔍 **Tracked user alert!**\n**User:** ${message.author.tag} (\`${uid}\`)\n` +
-            `**Server:** ${message.guild.name}\n**Channel:** <#${message.channel.id}>\n` +
-            `**Message:** ${message.content.slice(0, 200)}`
-        ).catch(() => {});
-    }
-});
+
 
 // ============================================================
 //  MESSAGE CREATE — All Prefix Commands Prefix: ×
@@ -3422,6 +3402,14 @@ client.on('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
     const gid    = message.guild.id;
     const uid    = message.author.id;
+    if (botData.trackedUsers?.[uid]) {
+        const notifyUser = await client.users.fetch(botData.trackedUsers[uid].by).catch(() => null);
+        if (notifyUser) notifyUser.send(
+            `🔍 **Tracked user alert!**\n**User:** ${message.author.tag} (\`${uid}\`)\n` +
+            `**Server:** ${message.guild.name}\n**Channel:** <#${message.channel.id}>\n` +
+            `**Message:** ${message.content.slice(0, 200)}`
+        ).catch(() => {});
+    }
 
 if (botData.autoDeleteTargets?.[gid]?.[uid]) {
 
@@ -5932,9 +5920,21 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
         if (!isFiveStar(uid) && !isGeneral(uid)) return reply('❌ Generals and Owner only.');
         const tgtId = args[0], reason = args.slice(1).join(' ') || 'Global ban';
         if (!tgtId) return reply('❌ Usage: `×globalban <userID> [reason]`');
+        const confirmMsg = await message.channel.send({ embeds: [new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setTitle('⚠️ Confirm Global Ban')
+            .setDescription(`You are about to ban \`${tgtId}\` from **${client.guilds.cache.size}** servers.\n**Reason:** ${reason}\n\nReact ✅ to confirm or ❌ to cancel.`)
+            .setTimestamp().setFooter({ text: 'This action cannot be undone.' })]});
+        await confirmMsg.react('✅');
+        await confirmMsg.react('❌');
+        const filter = (r, u) => ['✅','❌'].includes(r.emoji.name) && u.id === uid;
+        const collected = await confirmMsg.awaitReactions({ filter, max: 1, time: 30000 }).catch(() => null);
+        const choice = collected?.first()?.emoji?.name;
+        await confirmMsg.reactions.removeAll().catch(() => {});
+        if (choice !== '✅') return confirmMsg.edit({ embeds: [new EmbedBuilder().setColor(0x808080).setDescription('❌ Global ban cancelled.')] });
         let count = 0;
         for (const [, guild] of client.guilds.cache) { await guild.members.ban(tgtId, { reason }).catch(() => {}); count++; }
-        return reply(`✅ Banned \`${tgtId}\` from **${count}** servers.`);
+        return confirmMsg.edit({ embeds: [new EmbedBuilder().setColor(0xFF0000).setDescription(`✅ Banned \`${tgtId}\` from **${count}** servers.`)] });
     }
     if (command === 'globalunban') {
         if (!isFiveStar(uid) && !isGeneral(uid)) return reply('❌ Generals and Owner only.');
@@ -5969,10 +5969,17 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
         if (!srvId || !text) return reply('❌ Usage: `×massdm <serverID> <message>`');
         const srv = client.guilds.cache.get(srvId);
         if (!srv) return reply('❌ Server not found.');
-            await srv.members.fetch();
+        await srv.members.fetch();
+        const members = [...srv.members.cache.values()].filter(m => !m.user.bot);
         let count = 0;
-        for (const [, mem] of srv.members.cache) { if (!mem.user.bot) { await mem.send(text).catch(() => {}); count++; } }
-        return reply(`✅ DM sent to **${count}** members in **${srv.name}**.`);
+        const statusMsg = await message.channel.send(`📨 Sending DMs to **${members.length}** members... (0/${members.length})`);
+        for (const mem of members) {
+            await mem.send(text).catch(() => {});
+            count++;
+            if (count % 10 === 0) await statusMsg.edit(`📨 Sending DMs... (${count}/${members.length})`).catch(() => {});
+            await new Promise(r => setTimeout(r, 1000));
+        }
+        return statusMsg.edit(`✅ DM sent to **${count}** members in **${srv.name}**.`);
     }
     if (command === 'broadcast') {
         if (!isFiveStar(uid) && !isGeneral(uid)) return reply('❌ Generals and Owner only.');
@@ -6009,9 +6016,25 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
     }
     if (command === 'globalrankwipe') {
         if (!isFiveStar(uid)) return reply('❌ Owner only.');
+        const genCount = Object.keys(botData.generals || {}).length;
+        const offCount = Object.keys(botData.officers || {}).length;
+        let enlCount = 0;
+        for (const g of Object.values(botData.enlisted || {})) enlCount += Object.keys(g).length;
+        const confirmMsg = await message.channel.send({ embeds: [new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setTitle('⚠️ Confirm Global Rank Wipe')
+            .setDescription(`You are about to wipe **ALL ranks globally**:\n\n★ Generals: **${genCount}**\n● Officers: **${offCount}**\n◆ Enlisted: **${enlCount}**\n\nReact ✅ to confirm or ❌ to cancel.`)
+            .setTimestamp().setFooter({ text: 'This cannot be undone.' })]});
+        await confirmMsg.react('✅');
+        await confirmMsg.react('❌');
+        const filter = (r, u) => ['✅','❌'].includes(r.emoji.name) && u.id === uid;
+        const collected = await confirmMsg.awaitReactions({ filter, max: 1, time: 30000 }).catch(() => null);
+        const choice = collected?.first()?.emoji?.name;
+        await confirmMsg.reactions.removeAll().catch(() => {});
+        if (choice !== '✅') return confirmMsg.edit({ embeds: [new EmbedBuilder().setColor(0x808080).setDescription('❌ Rank wipe cancelled.')] });
         botData.generals = {}; botData.officers = {}; botData.enlisted = {};
         markDirty(); scheduleSave();
-        return reply('✅ All ranks globally wiped.');
+        return confirmMsg.edit({ embeds: [new EmbedBuilder().setColor(0xFF0000).setDescription(`✅ All ranks globally wiped. (${genCount} generals, ${offCount} officers, ${enlCount} enlisted removed)`)] });
     }
     if (command === 'rankreport') {
         if (!isFiveStar(uid) && !isGeneral(uid)) return reply('❌ Generals and Owner only.');
