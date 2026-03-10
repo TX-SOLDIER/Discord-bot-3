@@ -232,6 +232,7 @@ let botData = {
     commandLog:         {},
     disabledCommands:   {},
     serverPrefixes:     {},
+    catchBerryBoost:    {},  // { guildId: { userId: multiplier } }
     currency:           {},      // { userId: { balance: 1000, lastUpdated: timestamp } }
     xp:                 {},      // { guildId: { userId: { xp, level, prestige } } }
     xpCooldowns:        {},      // { guildId: { userId: timestamp } }
@@ -284,6 +285,7 @@ function getCleanData() {
     delete clean.commandLog;
     delete clean.dutyStatus;
     delete clean.antiraidSnapshot;
+    delete clean.catchBerryBoost;
     return clean;
 }
 
@@ -2148,9 +2150,9 @@ async function generateBattleImage(battle) {
         if (p2.pokemon.sprite) {
             const img = await loadImage(p2.pokemon.sprite);
             ctx.save();
-            ctx.translate(180 + 70, 0);
+            ctx.translate(180 + 90, 0);
             ctx.scale(-1, 1);
-            ctx.drawImage(img, 0, H * 0.10, 140, 140);
+            ctx.drawImage(img, 0, H * 0.05, 180, 180);
             ctx.restore();
         }
     } catch {}
@@ -2159,7 +2161,7 @@ async function generateBattleImage(battle) {
     try {
         if (p1.pokemon.sprite) {
             const img = await loadImage(p1.pokemon.sprite);
-            ctx.drawImage(img, 460, H * 0.18, 160, 160);
+            ctx.drawImage(img, 440, H * 0.08, 200, 200);
         }
     } catch {}
 
@@ -6551,6 +6553,40 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
         });
         return;
     }
+    // ──────────────────────────────────────────────────
+    // ×useberry <berry-name> — Apply catch boost before throwing
+    // ──────────────────────────────────────────────────
+    if (command === 'useberry') {
+        const activeSpawn = botData.activeSpawns?.[gid];
+        if (!activeSpawn) return reply('❌ There is no wild Pokémon to use a berry on!');
+
+        const berryKey = args.join('-').toLowerCase();
+        if (!berryKey) return reply('❌ Usage: `×useberry <berry-name>`\nExample: `×useberry razz-berry`');
+
+        const berryDef = POKE_ITEMS.berries[berryKey];
+        if (!berryDef) return reply(`❌ Unknown berry: \`${berryKey}\`. Check \`×bag berries\` for your berries.`);
+        if (!berryDef.catchBoost) return reply(`❌ **${berryDef.label}** doesn't boost catch rate. Try a Razz Berry, Nanab Berry, Pinap Berry, or Golden Razz Berry.`);
+
+        const owned = getBagItemCount(uid, 'berries', berryKey);
+        if (owned < 1) return reply(`❌ You don't have any **${berryDef.label}**! Buy some at \`×pokestore berries\`.`);
+
+        // Apply boost — overwrites any previous berry for this user
+        if (!botData.catchBerryBoost) botData.catchBerryBoost = {};
+        if (!botData.catchBerryBoost[gid]) botData.catchBerryBoost[gid] = {};
+        botData.catchBerryBoost[gid][uid] = berryDef.catchBoost;
+
+        removeFromBag(uid, 'berries', berryKey, 1);
+        markDirty(); scheduleSave();
+
+        return reply({ embeds: [new EmbedBuilder()
+            .setColor(0xFF5722)
+            .setTitle(`🍓 ${berryDef.label} Used!`)
+            .setDescription(`<@${uid}> tossed a **${berryDef.label}** at the wild **${formatPokeName(activeSpawn.pokemon.name)}**!\n\n✅ Catch rate boosted by **${berryDef.catchBoost}×** on your next throw!\n\nNow use \`×catch <ball>\` to throw a Pokéball.`)
+            .setThumbnail(berryDef.sprite)
+            .setFooter({ text: 'SOLDIER² Pokémon' })
+            .setTimestamp()
+        ]});
+    }
 
     // ──────────────────────────────────────────
     // ×catch <ball> — catch wild Pokémon
@@ -6585,16 +6621,10 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
         const pokemon = activeSpawn.pokemon;
         const shiny   = activeSpawn.shiny;
 
-        // Apply ball multiplier to catch rate
-        const boostedRate = Math.min(255, Math.floor(pokemon.catchRate * ballDef.catchMult));
-        const success     = calculateCatchSuccess(boostedRate, pokemon.stats.hp, pokemon.stats.hp);
-
-        if (success) {
-            const entry = buildPokemonEntry(pokemon, shiny, 5);
-            addPokemonToUser(uid, entry);
-
-            delete botData.activeSpawns[gid];
-            markDirty(); scheduleSave();
+        // Apply ball multiplier + berry boost to catch rate
+        const berryMult   = botData.catchBerryBoost?.[gid]?.[uid] || 1;
+        const boostedRate = Math.min(255, Math.floor(pokemon.catchRate * ballDef.catchMult * berryMult));
+        if (botData.catchBerryBoost?.[gid]?.[uid]) delete botData.catchBerryBoost[gid][uid];
 
             // Update spawn message
             const spawnChannel = client.channels.cache.get(activeSpawn.channelId);
@@ -6623,7 +6653,8 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
                     { name: '✨ Shiny',    value: shiny ? 'YES! 🌟' : 'No',                                 inline: true },
                     { name: '🔷 Type',     value: pokemon.types.map(t => formatPokeName(t)).join(' / '),     inline: true },
                     { name: '🎒 Ball Used',value: ballDef.label,                                             inline: true },
-                    { name: '📊 Catch Rate',value: `${boostedRate}/255 (${Math.round(boostedRate/255*100)}%)`, inline: true },
+                    { name: '📊 Catch Rate', value: `${boostedRate}/255 (${Math.round(boostedRate/255*100)}%)`, inline: true },
+                    { name: '🍓 Berry Boost', value: berryMult > 1 ? `${berryMult}×` : 'None', inline: true },
                 )
                 .setThumbnail(shiny ? pokemon.spriteShiny : pokemon.sprite)
                 .setFooter({ text: 'SOLDIER² Pokémon' })
