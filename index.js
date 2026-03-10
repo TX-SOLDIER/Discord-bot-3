@@ -2064,15 +2064,197 @@ async function generateBattleImage(battle) {
     const canvas = createCanvas(W, H);
     const ctx    = canvas.getContext('2d');
 
-    // ── Background — changes with weather ──
-    const weather   = battle.weather || null;
-    const wInfo     = weather ? WEATHER_INFO[weather] : null;
+    // ── Background — type-based, weather overlay on top ──
+    const weather = battle.weather || null;
+    const wInfo   = weather ? WEATHER_INFO[weather] : null;
+
+    const p1 = battle.player1;
+    const p2 = battle.player2;
+
+    const enemyType = p2.pokemon.types?.[0]?.toLowerCase() || 'normal';
+
+    const TYPE_ARENAS = {
+        normal:   { top: '#6e6e6e', mid: '#4a4a4a', bot: '#2e2e2e', ground: '#888888',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 20; i++) {
+                    ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.06})`;
+                    ctx.beginPath(); ctx.arc(Math.random()*W, Math.random()*H, Math.random()*40+10, 0, Math.PI*2); ctx.fill();
+                }
+            }},
+        fire:     { top: '#7f0000', mid: '#bf360c', bot: '#e64a19', ground: '#ff6d00',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 25; i++) {
+                    ctx.fillStyle = `rgba(255,${Math.floor(Math.random()*80+80)},0,${Math.random()*0.3+0.1})`;
+                    ctx.beginPath(); ctx.ellipse(Math.random()*W, H*0.6+Math.random()*H*0.4, Math.random()*8+3, Math.random()*18+6, 0, 0, Math.PI*2); ctx.fill();
+                }
+                const glow = ctx.createRadialGradient(W*0.5, H, 10, W*0.5, H, 200);
+                glow.addColorStop(0, 'rgba(255,100,0,0.25)'); glow.addColorStop(1, 'rgba(255,0,0,0)');
+                ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+            }},
+        water:    { top: '#0d3b6e', mid: '#1565c0', bot: '#0288d1', ground: '#29b6f6',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 30; i++) {
+                    ctx.strokeStyle = `rgba(100,200,255,${Math.random()*0.2+0.05})`;
+                    ctx.lineWidth = Math.random()*2+1;
+                    ctx.beginPath(); ctx.moveTo(Math.random()*W, Math.random()*H); ctx.quadraticCurveTo(Math.random()*W, Math.random()*H, Math.random()*W, Math.random()*H); ctx.stroke();
+                }
+            }},
+        grass:    { top: '#1b5e20', mid: '#2e7d32', bot: '#388e3c', ground: '#66bb6a',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 20; i++) {
+                    ctx.strokeStyle = `rgba(100,255,100,${Math.random()*0.2})`;
+                    ctx.lineWidth = 1;
+                    const x = Math.random()*W;
+                    ctx.beginPath(); ctx.moveTo(x, H); ctx.quadraticCurveTo(x+Math.random()*20-10, H-Math.random()*40, x+Math.random()*10-5, H-Math.random()*60-10); ctx.stroke();
+                }
+                ctx.fillStyle = 'rgba(50,200,50,0.06)'; ctx.fillRect(0, 0, W, H);
+            }},
+        electric: { top: '#1a1a00', mid: '#3d3400', bot: '#665c00', ground: '#fdd835',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 12; i++) {
+                    ctx.strokeStyle = `rgba(255,235,${Math.floor(Math.random()*50)},${Math.random()*0.5+0.2})`;
+                    ctx.lineWidth = Math.random()*2+0.5;
+                    ctx.beginPath();
+                    let x = Math.random()*W, y = 0;
+                    ctx.moveTo(x, y);
+                    for (let j = 0; j < 6; j++) { x += Math.random()*30-15; y += H/6; ctx.lineTo(x, y); }
+                    ctx.stroke();
+                }
+                ctx.fillStyle = 'rgba(255,220,0,0.07)'; ctx.fillRect(0, 0, W, H);
+            }},
+        ice:      { top: '#e0f7fa', mid: '#80deea', bot: '#4dd0e1', ground: '#b2ebf2',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 30; i++) {
+                    ctx.fillStyle = `rgba(200,240,255,${Math.random()*0.4+0.1})`;
+                    ctx.beginPath(); ctx.arc(Math.random()*W, Math.random()*H, Math.random()*3+1, 0, Math.PI*2); ctx.fill();
+                }
+                ctx.fillStyle = 'rgba(180,240,255,0.08)'; ctx.fillRect(0, 0, W, H);
+            }},
+        fighting: { top: '#3e0000', mid: '#7f1010', bot: '#b71c1c', ground: '#d32f2f',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 15; i++) {
+                    ctx.fillStyle = `rgba(200,50,50,${Math.random()*0.15})`;
+                    ctx.beginPath(); ctx.arc(Math.random()*W, Math.random()*H, Math.random()*50+10, 0, Math.PI*2); ctx.fill();
+                }
+                for (let i = 0; i < 8; i++) {
+                    ctx.strokeStyle = `rgba(255,100,100,${Math.random()*0.2})`;
+                    ctx.lineWidth = Math.random()*3+1;
+                    ctx.beginPath(); ctx.moveTo(Math.random()*W, 0); ctx.lineTo(Math.random()*W, H); ctx.stroke();
+                }
+            }},
+        poison:   { top: '#1a0033', mid: '#4a148c', bot: '#6a1b9a', ground: '#ab47bc',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 20; i++) {
+                    ctx.fillStyle = `rgba(180,0,255,${Math.random()*0.15})`;
+                    ctx.beginPath(); ctx.arc(Math.random()*W, Math.random()*H, Math.random()*15+3, 0, Math.PI*2); ctx.fill();
+                }
+                ctx.fillStyle = 'rgba(130,0,200,0.08)'; ctx.fillRect(0, 0, W, H);
+            }},
+        ground:   { top: '#3e2000', mid: '#6d4c18', bot: '#8d6e2a', ground: '#bcaa74',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 25; i++) {
+                    ctx.fillStyle = `rgba(180,140,60,${Math.random()*0.2})`;
+                    ctx.beginPath(); ctx.ellipse(Math.random()*W, Math.random()*H, Math.random()*20+5, 3, Math.random()*Math.PI, 0, Math.PI*2); ctx.fill();
+                }
+            }},
+        flying:   { top: '#1a237e', mid: '#283593', bot: '#3949ab', ground: '#90caf9',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 12; i++) {
+                    ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.15+0.05})`;
+                    ctx.beginPath(); ctx.ellipse(Math.random()*W, Math.random()*H*0.6, Math.random()*80+20, Math.random()*20+5, 0, 0, Math.PI*2); ctx.fill();
+                }
+                const skyGlow = ctx.createRadialGradient(W*0.5, 0, 10, W*0.5, 0, 200);
+                skyGlow.addColorStop(0, 'rgba(150,180,255,0.2)'); skyGlow.addColorStop(1, 'rgba(0,0,100,0)');
+                ctx.fillStyle = skyGlow; ctx.fillRect(0, 0, W, H);
+            }},
+        psychic:  { top: '#0f0c29', mid: '#302b63', bot: '#24243e', ground: '#ce93d8',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 20; i++) {
+                    ctx.strokeStyle = `rgba(255,100,220,${Math.random()*0.2})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.arc(W/2+Math.random()*100-50, H/2+Math.random()*100-50, Math.random()*80+20, 0, Math.PI*2); ctx.stroke();
+                }
+                ctx.fillStyle = 'rgba(200,0,255,0.05)'; ctx.fillRect(0, 0, W, H);
+            }},
+        bug:      { top: '#1b3a00', mid: '#33691e', bot: '#558b2f', ground: '#aed581',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 15; i++) {
+                    ctx.fillStyle = `rgba(150,255,50,${Math.random()*0.12})`;
+                    ctx.beginPath(); ctx.arc(Math.random()*W, Math.random()*H, Math.random()*20+5, 0, Math.PI*2); ctx.fill();
+                }
+            }},
+        rock:     { top: '#212121', mid: '#37474f', bot: '#455a64', ground: '#90a4ae',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 20; i++) {
+                    ctx.fillStyle = `rgba(150,150,150,${Math.random()*0.15})`;
+                    const x = Math.random()*W, y = Math.random()*H, s = Math.random()*20+5;
+                    ctx.beginPath(); ctx.moveTo(x, y-s); ctx.lineTo(x+s, y); ctx.lineTo(x, y+s); ctx.lineTo(x-s, y); ctx.closePath(); ctx.fill();
+                }
+            }},
+        ghost:    { top: '#0a0014', mid: '#1a0033', bot: '#2d004d', ground: '#7b1fa2',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 15; i++) {
+                    ctx.fillStyle = `rgba(150,0,255,${Math.random()*0.12})`;
+                    ctx.beginPath(); ctx.arc(Math.random()*W, Math.random()*H, Math.random()*30+10, 0, Math.PI*2); ctx.fill();
+                }
+                for (let i = 0; i < 20; i++) {
+                    ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.06})`;
+                    ctx.beginPath(); ctx.arc(Math.random()*W, Math.random()*H, Math.random()*2+1, 0, Math.PI*2); ctx.fill();
+                }
+            }},
+        dragon:   { top: '#0d0d1a', mid: '#1a237e', bot: '#311b92', ground: '#7c4dff',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 15; i++) {
+                    ctx.strokeStyle = `rgba(100,100,255,${Math.random()*0.25})`;
+                    ctx.lineWidth = Math.random()*2+1;
+                    ctx.beginPath(); ctx.moveTo(Math.random()*W, 0); ctx.bezierCurveTo(Math.random()*W, H*0.3, Math.random()*W, H*0.6, Math.random()*W, H); ctx.stroke();
+                }
+                const dragonGlow = ctx.createRadialGradient(W*0.5, H*0.5, 10, W*0.5, H*0.5, 250);
+                dragonGlow.addColorStop(0, 'rgba(80,0,255,0.15)'); dragonGlow.addColorStop(1, 'rgba(0,0,80,0)');
+                ctx.fillStyle = dragonGlow; ctx.fillRect(0, 0, W, H);
+            }},
+        dark:     { top: '#0a0a0a', mid: '#1a1a1a', bot: '#0d0d0d', ground: '#424242',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 25; i++) {
+                    ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.05})`;
+                    ctx.beginPath(); ctx.arc(Math.random()*W, Math.random()*H, Math.random()*2+0.5, 0, Math.PI*2); ctx.fill();
+                }
+                ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0, 0, W, H);
+            }},
+        steel:    { top: '#1c1c2e', mid: '#2e3a4a', bot: '#37474f', ground: '#90a4ae',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 15; i++) {
+                    ctx.strokeStyle = `rgba(180,200,220,${Math.random()*0.15})`;
+                    ctx.lineWidth = Math.random()*3+1;
+                    const x = Math.random()*W;
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x+Math.random()*20-10, H); ctx.stroke();
+                }
+                ctx.fillStyle = 'rgba(150,180,200,0.05)'; ctx.fillRect(0, 0, W, H);
+            }},
+        fairy:    { top: '#1a001a', mid: '#4a0040', bot: '#7b0060', ground: '#f48fb1',
+            fx: (ctx, W, H) => {
+                for (let i = 0; i < 30; i++) {
+                    ctx.fillStyle = `rgba(255,150,255,${Math.random()*0.2})`;
+                    ctx.beginPath(); ctx.arc(Math.random()*W, Math.random()*H, Math.random()*4+1, 0, Math.PI*2); ctx.fill();
+                }
+                const fairyGlow = ctx.createRadialGradient(W*0.5, H*0.3, 10, W*0.5, H*0.3, 200);
+                fairyGlow.addColorStop(0, 'rgba(255,100,255,0.15)'); fairyGlow.addColorStop(1, 'rgba(200,0,200,0)');
+                ctx.fillStyle = fairyGlow; ctx.fillRect(0, 0, W, H);
+            }},
+    };
+
+    const arena = TYPE_ARENAS[enemyType] || TYPE_ARENAS.normal;
+
+    // Draw base gradient
     const bg = ctx.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0,   wInfo ? wInfo.bgTop : '#1a1a2e');
-    bg.addColorStop(0.5, wInfo ? wInfo.bgTop : '#16213e');
-    bg.addColorStop(1,   wInfo ? wInfo.bgBot : '#0f3460');
+    bg.addColorStop(0,   wInfo ? wInfo.bgTop : arena.top);
+    bg.addColorStop(0.5, wInfo ? wInfo.bgTop : arena.mid);
+    bg.addColorStop(1,   wInfo ? wInfo.bgBot : arena.bot);
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
+
+    // Draw type FX (skip if weather overrides)
+    if (!wInfo) arena.fx(ctx, W, H);
 
     // ── Weather overlay particles ──
     if (weather === 'rain') {
@@ -2125,8 +2307,9 @@ async function generateBattleImage(battle) {
         ctx.fillText(wInfo.label, W/2, 22);
         ctx.textAlign = 'left';
     }
+    
     // ── Ground line ──
-    ctx.strokeStyle = '#e94560';
+    ctx.strokeStyle = wInfo ? '#e94560' : (arena.ground || '#e94560');
     ctx.lineWidth   = 2;
     ctx.beginPath();
     ctx.moveTo(0, H * 0.72);
@@ -2134,17 +2317,14 @@ async function generateBattleImage(battle) {
     ctx.stroke();
 
     // ── Platform ovals ──
-    ctx.fillStyle = 'rgba(233, 69, 96, 0.15)';
+    ctx.fillStyle = wInfo ? 'rgba(233,69,96,0.15)' : 'rgba(255,255,255,0.10)';
     ctx.beginPath();
     ctx.ellipse(180, H * 0.72, 100, 16, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
     ctx.ellipse(620, H * 0.72, 100, 16, 0, 0, Math.PI * 2);
     ctx.fill();
-
-    const p1 = battle.player1;
-    const p2 = battle.player2;
-
+    
     // ── Enemy sprite — LEFT side ──
     try {
         if (p2.pokemon.sprite) {
