@@ -1947,7 +1947,9 @@ const spawnTimers = {};
 
 // ── Build spawn embed ──
 function buildSpawnEmbed(pokemon, shiny) {
-    const sprite = shiny ? pokemon.spriteShiny : pokemon.sprite;
+    const sprite = shiny
+        ? (pokemon.spriteShiny || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${pokemon.id}.png`)
+        : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png`;
     return new EmbedBuilder()
         .setColor(shiny ? 0xFFD700 : 0xFF6900)
         .setTitle(`${shiny ? '✨ A shiny wild ' : '🌿 A wild '}**${formatPokeName(pokemon.name)}** appeared!`)
