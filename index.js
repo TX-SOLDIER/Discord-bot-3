@@ -6626,6 +6626,15 @@ if (botData.autoDeleteTargets?.[gid]?.[uid]) {
         const boostedRate = Math.min(255, Math.floor(pokemon.catchRate * ballDef.catchMult * berryMult));
         if (botData.catchBerryBoost?.[gid]?.[uid]) delete botData.catchBerryBoost[gid][uid];
 
+        const success = calculateCatchSuccess(boostedRate, pokemon.stats.hp, pokemon.stats.hp);
+
+        if (success) {
+            const entry = buildPokemonEntry(pokemon, shiny, 5);
+            addPokemonToUser(uid, entry);
+
+            delete botData.activeSpawns[gid];
+            markDirty(); scheduleSave();
+
             // Update spawn message
             const spawnChannel = client.channels.cache.get(activeSpawn.channelId);
             if (spawnChannel) {
