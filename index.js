@@ -1229,9 +1229,11 @@ const SPAWN_MAX_MINUTES  = 45;
 const SPAWN_DESPAWN_MINS = 10;
 const BATTLE_MOVE_TIMEOUT = 120000; // 2 minutes to pick a move
 
-// ── All Pokémon IDs 1–1025 ──
-const SPAWN_POOL = Array.from({ length: 1025 }, (_, i) => i + 1);
-
+// Base Pokémon: 1–1025 | Regional forms, Megas, Variants: 10001–10277
+const SPAWN_POOL = [
+    ...Array.from({ length: 1025 }, (_, i) => i + 1),
+    ...Array.from({ length: 277 },  (_, i) => i + 10001),
+];
 // ── XP formula ──
 function xpForLevel(level) {
     return Math.floor(0.8 * Math.pow(level, 3));
