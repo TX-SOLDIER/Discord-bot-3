@@ -2410,9 +2410,9 @@ async function generateBattleImage(battle) {
         return map[status] || '#666666';
     }
 
-    // ── Enemy HP bar — RIGHT side (opposite the sprite) ──
+    // ── Enemy HP bar — BOTTOM RIGHT ──
     drawHPBar(
-        W - 225, 15,
+        W - 225, H - 88,
         p2.currentHp, p2.maxHp,
         formatPokeName(p2.pokemon.name), p2.pokemon.level,
         p2.statusEffect
