@@ -2327,22 +2327,22 @@ async function generateBattleImage(battle) {
     ctx.ellipse(620, H * 0.72, 100, 16, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // ── Enemy sprite — LEFT side (HD) ──
+// ── Player (p1) sprite — LEFT side, facing right ──
+    try {
+        const p1Url = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p1.pokemon.id}.png`;
+        const img = await loadImage(p1Url);
+        ctx.drawImage(img, 80, H * 0.05, 180, 180);
+    } catch {}
+
+    // ── Enemy (p2) sprite — RIGHT side, facing left ──
     try {
         const p2Url = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p2.pokemon.id}.png`;
         const img = await loadImage(p2Url);
         ctx.save();
-        ctx.translate(270, 0);
+        ctx.translate(620 + 90, 0);
         ctx.scale(-1, 1);
-        ctx.drawImage(img, 0, H * 0.05, 180, 180);
+        ctx.drawImage(img, 0, H * 0.08, 180, 180);
         ctx.restore();
-    } catch {}
-
-    // ── Player sprite — RIGHT side ──
-    try {
-        const p1Url = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p1.pokemon.id}.png`;
-        const img = await loadImage(p1Url);
-        ctx.drawImage(img, 520, H * 0.12, 180, 180);
     } catch {}
 
     // ── Helper: draw HP bar ──
